@@ -1,0 +1,41 @@
+{
+  "name": "centro-artesanato",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-produtos.ts",
+    "db:seed": "npm run seed",
+    "db:clear": "ts-node -r tsconfig-paths/register -e \"require('./src/lib/db').default().then(db => require('./src/models/produto').deleteMany({}).then(() => console.log('Produtos removidos')).catch(err => console.error(err)).finally(() => process.exit()))\""
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.1.1",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.16",
+    "axios": "^1.6.5",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.13.2",
+    "next": "^14.1.0",
+    "postcss": "^8.4.33",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^4.12.0",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0"
+  }
+}

@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 249, 250, 251;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+  min-height: 100vh;
+}
+
+/* Espaçamento para compensar a navbar fixa */
+main {
+  padding-top: 4rem; /* 64px por padrão */
+}
+
+/* Em páginas admin não precisamos do padding */
+.admin-page main {
+  padding-top: 0;
+}
+
+/* Classes para inputs e botões */
+.input-field {
+  @apply border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200;
+}
+
+.btn-primary {
+  @apply bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-gray-100 text-gray-800 px-4 py-2 rounded-md shadow-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+@layer components {
+  .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300;
+  }
+  
+  .container-page {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+  
+  .section-title {
+    @apply text-3xl font-bold text-amber-900 mb-6;
+  }
+  
+  .section-subtitle {
+    @apply text-xl text-amber-800 mb-4;
+  }
+  
+  .product-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6;
+  }
+  
+  .nav-link {
+    @apply hover:text-amber-200 transition duration-300;
+  }
+} 
