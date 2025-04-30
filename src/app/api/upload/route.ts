@@ -13,6 +13,11 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB em bytes
 // Tipos de arquivos aceitos
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
+// Nova forma de configurar limites de requisição no App Router
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Tempo máximo de processamento em segundos
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     // Garantir que a pasta de uploads existe
@@ -74,12 +79,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Definir tamanho máximo de payload aceito
-export const config = {
-  api: {
-    bodyParser: false,
-    responseLimit: '10mb',
-  },
-}; 
+} 
