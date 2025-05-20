@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { signIn } from 'next-auth/react';
+import { toast } from 'react-hot-toast';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,236 +45,240 @@ export default function LoginPage() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setLoading(true);
     
     try {
       const result = await login(formData.email, formData.senha, formData.lembrar);
       
       if (result.success) {
-        console.log('Login bem-sucedido! Definindo caminho de redirecionamento');
-        // Definir caminho de redirecionamento com base no email
-        if (formData.email.toLowerCase() === 'admin@admin.com') {
-          setRedirectPath('/admin/dashboard');
-        } else {
-          setRedirectPath('/');
-        }
+        // Login bem-sucedido - redirecionamento é tratado no useEffect
       } else {
-        setError(result.message || 'Falha ao fazer login. Verifique suas credenciais.');
+        setError(result.message || 'Falha no login. Verifique suas credenciais.');
       }
-    } catch (err: any) {
-      console.error('Erro no login:', err);
-      setError(err.message || 'Ocorreu um erro ao tentar fazer login.');
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      setError(error.message || 'Ocorreu um erro ao fazer login. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para login rápido como admin
-  const tentarLoginAdmin = async () => {
-    setLoading(true);
-    setError(null);
-    
+  const handleSocialLogin = async (provider: string) => {
     try {
-      // Usar a nova função setAdminUser para definir diretamente os dados do usuário admin
-      setAdminUser();
+      setSocialLoading(provider);
+      setError(null);
       
-      // Definir o caminho de redirecionamento
-      setRedirectPath('/admin/dashboard');
+      const result = await signIn(provider, { 
+        redirect: false, 
+        callbackUrl: redirectPath || '/' 
+      });
       
-      console.log('Login admin concluído, redirecionando para dashboard');
-    } catch (err: any) {
-      console.error('Erro ao fazer login admin:', err);
-      setError(err.message || 'Erro ao definir usuário administrador');
+      if (result?.error) {
+        setError(`Erro ao fazer login com ${provider}: ${result.error}`);
+        toast.error(`Falha ao autenticar com ${provider}`);
+      } else if (result?.url) {
+        router.push(result.url);
+      }
+    } catch (error: any) {
+      console.error(`Erro ao fazer login com ${provider}:`, error);
+      setError(error.message || `Ocorreu um erro ao fazer login com ${provider}.`);
+      toast.error(`Erro ao conectar com ${provider}`);
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSocialLogin = (provider: string) => {
-    setSocialLoading(provider);
-    // Simular um login social (em produção, isso seria uma autenticação real)
-    setTimeout(() => {
-      setError('Login social ainda não implementado.');
       setSocialLoading(null);
-    }, 1500);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-amber-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-amber-800">Centro de Artesanato</h1>
-          <h2 className="text-xl font-medium text-gray-700 mt-2">Entrar na sua conta</h2>
-        </div>
-        
-        {error && (
-          <div className="bg-red-100 text-red-800 p-3 rounded-md mb-4">
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="input-field w-full"
-              placeholder="seu@email.com"
-            />
-          </div>
-          
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label htmlFor="senha" className="block text-sm font-medium text-gray-700">
-                Senha
-              </label>
-              <Link 
-                href="/conta/recuperar-senha" 
-                className="text-sm text-amber-700 hover:text-amber-900"
-              >
-                Esqueceu a senha?
-              </Link>
-            </div>
-            <input
-              id="senha"
-              name="senha"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={formData.senha}
-              onChange={handleChange}
-              className="input-field w-full"
-              placeholder="Sua senha"
-            />
-          </div>
-          
-          <div className="flex items-center">
-            <input
-              id="lembrar"
-              name="lembrar"
-              type="checkbox"
-              checked={formData.lembrar}
-              onChange={handleChange}
-              className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
-            />
-            <label htmlFor="lembrar" className="ml-2 block text-sm text-gray-700">
-              Lembrar de mim
-            </label>
-          </div>
-          
-          <div>
+    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Entrar no Centro de Artesanato
+        </h2>
+        <p className="mt-2 text-center text-sm text-gray-600">
+          Ou{' '}
+          <Link href="/conta/registro" className="font-medium text-amber-600 hover:text-amber-500">
+            criar uma nova conta
+          </Link>
+        </p>
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {/* Login social */}
+          <div className="space-y-3">
             <button
-              type="submit"
-              className={`btn-primary w-full ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-              disabled={loading}
+              type="button"
+              onClick={() => handleSocialLogin('google')}
+              disabled={loading || socialLoading !== null}
+              className={`w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 focus:outline-none ${
+                socialLoading === 'google' ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              {socialLoading === 'google' ? (
+                <span className="inline-flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Entrando...
+                  Conectando com Google...
                 </span>
               ) : (
-                'Entrar'
+                <span className="inline-flex items-center">
+                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                    <path
+                      fill="#EA4335"
+                      d="M12.0003 4.87566C13.8113 4.87566 15.3473 5.49056 16.5003 6.64566L19.9693 3.17066C17.9483 1.27466 15.2343 0 12.0003 0C7.3053 0 3.25531 2.68366 1.28931 6.60466L5.2723 9.70666C6.2263 6.86866 8.8743 4.87566 12.0003 4.87566Z"
+                    />
+                    <path
+                      fill="#4285F4"
+                      d="M23.49 12.2732C23.49 11.4822 23.4 10.7322 23.25 10.0132H12V14.5142H18.47C18.18 16.0472 17.34 17.3512 16.09 18.2282L19.97 21.2332C22.24 19.1402 23.49 15.9252 23.49 12.2732Z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.27031 14.2939L4.4043 15.5739L1.28931 18.3949C3.2553 22.3159 7.3053 25.0009 12.0003 25.0009C15.2343 25.0009 17.9483 23.7659 19.9703 21.2339L16.0913 18.2279C15.0073 18.9859 13.6243 19.4339 12.0003 19.4339C8.8743 19.4339 6.2263 17.4399 5.27031 14.6029V14.2939Z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12.0003 24.9999C15.2343 24.9999 17.9483 23.7649 19.9703 21.2329L16.0913 18.2279C15.0073 18.9859 13.6243 19.4339 12.0003 19.4339C8.8743 19.4339 6.2263 17.4399 5.27031 14.6029L1.28931 17.7049C3.2553 21.6259 7.3053 24.9999 12.0003 24.9999Z"
+                    />
+                  </svg>
+                  Entrar com Google
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSocialLogin('facebook')}
+              disabled={loading || socialLoading !== null}
+              className={`w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-500 bg-white hover:bg-gray-50 focus:outline-none ${
+                socialLoading === 'facebook' ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+            >
+              {socialLoading === 'facebook' ? (
+                <span className="inline-flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Conectando com Facebook...
+                </span>
+              ) : (
+                <span className="inline-flex items-center">
+                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                    <path
+                      fill="#1877F2"
+                      d="M24 12.0699C24 5.40608 18.6338 0 12.0699 0C5.40608 0 0 5.40608 0 12.0699C0 18.0898 4.41407 23.0898 10.1802 24V15.5627H7.12243V12.0699H10.1802V9.41071C10.1802 6.38393 11.9862 4.71429 14.7441 4.71429C16.0652 4.71429 17.4464 4.95 17.4464 4.95V7.92207H15.921C14.4183 7.92207 13.9587 8.85379 13.9587 9.80893V12.0699H17.307L16.7759 15.5627H13.9587V24C19.7248 23.0898 24 18.0898 24 12.0699Z"
+                    />
+                  </svg>
+                  Entrar com Facebook
+                </span>
               )}
             </button>
           </div>
-        </form>
-        
-        <div className="mt-4 text-center">
-          <button 
-            onClick={tentarLoginAdmin}
-            className="text-sm text-amber-700 hover:text-amber-900 underline"
-            disabled={loading}
-          >
-            Login rápido como admin
-          </button>
-        </div>
-        
-        <div className="mt-6">
-          <div className="relative">
+
+          <div className="mt-6 relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-white text-gray-500">
-                Ou continue com
+                Ou continue com email
               </span>
             </div>
           </div>
-          
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button
-              onClick={() => handleSocialLogin('google')}
-              disabled={!!socialLoading}
-              className="btn-secondary flex justify-center items-center"
-            >
-              {socialLoading === 'google' ? (
-                <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <>
-                  <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
-                    <path
-                      d="M12.545,10.239v3.821h5.445c-0.212,1.439-1.447,4.116-5.445,4.116c-3.268,0-5.945-2.704-5.945-6.056
-                      c0-3.352,2.677-6.056,5.945-6.056c1.87,0,3.118,0.795,3.834,1.482l2.611-2.515c-1.67-1.563-3.836-2.513-6.445-2.513
-                      c-5.336,0-9.663,4.327-9.663,9.664c0,5.336,4.327,9.664,9.663,9.664c5.576,0,9.273-3.916,9.273-9.442
-                      c0-0.638-0.054-1.13-0.169-1.618H12.545V10.239z"
-                      fill="#4285F4"
-                    />
-                  </svg>
-                  Google
-                </>
-              )}
-            </button>
+
+          {/* Formulário de login */}
+          <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
             
-            <button
-              onClick={() => handleSocialLogin('facebook')}
-              disabled={!!socialLoading}
-              className="btn-secondary flex justify-center items-center"
-            >
-              {socialLoading === 'facebook' ? (
-                <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <>
-                  <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
-                    <path
-                      d="M20.0062 3H3.99375C3.445 3 3 3.445 3 3.99375V20.0062C3 20.555 3.445 21 3.99375 21H12.6169V14.1806H10.1794V11.2969H12.6169V9.15625C12.6169 6.7425 14.0106 5.485 16.1706 5.485C17.2084 5.485 18.1034 5.57125 18.375 5.6075V8.19375H16.8C15.5556 8.19375 15.3169 8.8125 15.3169 9.67375V11.2969H18.2906L17.9212 14.1806H15.3169V21H20.0062C20.555 21 21 20.555 21 20.0062V3.99375C21 3.445 20.555 3 20.0062 3Z"
-                      fill="#1877F2"
-                    />
-                  </svg>
-                  Facebook
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-        
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Não tem uma conta?{' '}
-            <Link href="/conta/registro" className="text-amber-700 hover:text-amber-900 font-medium">
-              Registre-se
-            </Link>
-          </p>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email
+              </label>
+              <div className="mt-1">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="senha" className="block text-sm font-medium text-gray-700">
+                Senha
+              </label>
+              <div className="mt-1">
+                <input
+                  id="senha"
+                  name="senha"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={formData.senha}
+                  onChange={handleChange}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="lembrar"
+                  name="lembrar"
+                  type="checkbox"
+                  checked={formData.lembrar}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                />
+                <label htmlFor="lembrar" className="ml-2 block text-sm text-gray-900">
+                  Lembrar de mim
+                </label>
+              </div>
+
+              <div className="text-sm">
+                <Link href="/conta/recuperar-senha" className="font-medium text-amber-600 hover:text-amber-500">
+                  Esqueceu sua senha?
+                </Link>
+              </div>
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 ${
+                  loading ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
+              >
+                {loading ? (
+                  <span className="inline-flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Entrando...
+                  </span>
+                ) : (
+                  'Entrar'
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
