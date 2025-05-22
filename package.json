@@ -9,11 +9,18 @@
     "lint": "next lint",
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed-produtos.ts",
     "db:seed": "npm run seed",
+    "db:seed:all": "ts-node -r tsconfig-paths/register src/scripts/seed-database.ts",
+    "db:seed:js": "node src/scripts/seed-database.js",
+    "db:seed:simple": "node src/scripts/simple-seed.js",
     "db:clear": "ts-node -r tsconfig-paths/register -e \"require('./src/lib/db').default().then(db => require('./src/models/produto').deleteMany({}).then(() => console.log('Produtos removidos')).catch(err => console.error(err)).finally(() => process.exit()))\""
   },
   "dependencies": {
+    "@auth/core": "^0.39.1",
+    "@auth/mongodb-adapter": "^3.9.1",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.1.1",
+    "@prisma/client": "^6.8.2",
+    "@react-oauth/google": "^0.12.2",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.47",
     "@types/react-dom": "^18.2.18",
@@ -25,9 +32,10 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.16.0",
     "mongoose": "^8.13.2",
     "next": "^14.1.0",
-    "nodemailer": "^7.0.3",
+    "next-auth": "^5.0.0-beta.3",
     "postcss": "^8.4.33",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -38,6 +46,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "prisma": "^6.8.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0"
   }

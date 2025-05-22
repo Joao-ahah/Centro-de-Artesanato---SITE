@@ -173,9 +173,7 @@ Este projeto implementa um painel administrativo para o Centro de Artesanato, pe
 Para acessar o painel administrativo:
 
 1. Acesse `/conta/login`
-2. Use as credenciais:
-   - Email: `admin@admin.com`
-   - Senha: `senha123`
+
 
 ### Upload de Imagens em Produtos
 

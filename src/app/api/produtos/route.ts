@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
+import dbConnect from '@/lib/db';
 import { ProdutoModel } from '@/models/produto';
 
 // Função para simular tempo de resposta do servidor (opcional)
@@ -209,32 +209,40 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
     
+    // Conectar ao banco de dados
     try {
-      // Conectar ao banco de dados
       await dbConnect();
+      
+      console.log('Salvando produto no MongoDB:', body.nome);
       
       // Criar novo produto
       const novoProduto = new ProdutoModel({
         nome: body.nome,
         descricao: body.descricao,
-        preco: body.preco,
-        precoPromocional: body.precoPromocional,
+        preco: parseFloat(body.preco),
+        precoPromocional: body.precoPromocional ? parseFloat(body.precoPromocional) : undefined,
         categoria: body.categoria,
         subcategoria: body.subcategoria,
-        quantidade: body.quantidade || 0,
+        quantidade: parseInt(body.quantidade || '0'),
         destaque: body.destaque || false,
         disponivel: body.disponivel !== false, // true por padrão
         imagens: body.imagens,
         artesao: body.artesao,
         tecnica: body.tecnica,
         material: body.material,
-        dimensoes: body.dimensoes,
+        dimensoes: body.dimensoes ? {
+          altura: body.dimensoes.altura ? parseFloat(body.dimensoes.altura) : undefined,
+          largura: body.dimensoes.largura ? parseFloat(body.dimensoes.largura) : undefined,
+          comprimento: body.dimensoes.comprimento ? parseFloat(body.dimensoes.comprimento) : undefined,
+          peso: body.dimensoes.peso ? parseFloat(body.dimensoes.peso) : undefined
+        } : undefined,
         tags: body.tags ? (typeof body.tags === 'string' ? body.tags.split(',').map((tag: string) => tag.trim()) : body.tags) : [],
         dataCriacao: new Date()
       });
       
       // Salvar no banco de dados
       const produtoSalvo = await novoProduto.save();
+      console.log('Produto salvo com sucesso, ID:', produtoSalvo._id);
       
       return NextResponse.json({
         success: true,
@@ -243,35 +251,12 @@ export async function POST(req: NextRequest) {
       }, { status: 201 });
       
     } catch (dbError: any) {
-      console.warn('Falha ao salvar no banco de dados. Simulando criação de produto.');
-      console.error(dbError);
-      
-      // Simular criação de produto para desenvolvimento
-      await simularTempo(1000);
-      
-      // Gerar ID aleatório
-      const novoId = Math.floor(Math.random() * 1000000).toString();
-      
-      // Criar produto simulado
-      const novoProduto = {
-        _id: novoId,
-        ...body,
-        // Garantir que valores numéricos sejam convertidos corretamente
-        preco: parseFloat(body.preco),
-        precoPromocional: body.precoPromocional ? parseFloat(body.precoPromocional) : undefined,
-        quantidade: parseInt(body.quantidade || '0'),
-        destaque: !!body.destaque,
-        dataCriacao: new Date().toISOString()
-      };
-      
-      // Adicionar o produto à lista de produtos simulados
-      produtosSimulados.unshift(novoProduto);
-      
+      console.error('Erro ao salvar no MongoDB:', dbError);
       return NextResponse.json({
-        success: true,
-        message: 'Produto criado com sucesso (simulado)',
-        produto: novoProduto
-      }, { status: 201 });
+        success: false,
+        message: 'Erro ao salvar produto no banco de dados',
+        error: dbError.message
+      }, { status: 500 });
     }
     
   } catch (error: any) {

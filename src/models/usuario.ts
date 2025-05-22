@@ -22,6 +22,8 @@ export interface IUsuario extends Document {
   ultimoLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
+  socialProviders?: string[]; // Novo campo para armazenar providers
+  image?: string; // Imagem de perfil (para auth social)
   // Método para verificar senha
   compararSenha(senha: string): Promise<boolean>;
 }
@@ -84,6 +86,14 @@ const UsuarioSchema = new Schema<IUsuario>({
   },
   ultimoLogin: {
     type: Date
+  },
+  socialProviders: {
+    type: [String],
+    enum: ['google', 'facebook'],
+    default: []
+  },
+  image: {
+    type: String
   }
 }, {
   timestamps: true // Adiciona createdAt e updatedAt automaticamente

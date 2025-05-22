@@ -511,7 +511,8 @@ export default function NovoProdutoPage() {
                           placeholder="Algodão, Argila, Madeira, etc."
                           value={material}
                           onChange={(e) => {
-                            const newMaterial = [...(produto.material || []), e.target.value];
+                            const newMaterial = [...(produto.material || [])];
+                            newMaterial[index] = e.target.value;
                             setProduto(prev => ({
                               ...prev,
                               material: newMaterial

@@ -36,11 +36,12 @@ export interface IPedidoData {
   nomeCliente: string;
   emailCliente: string;
   items: IItemPedido[];
-  endereco: IEndereco;
+  metodoEntrega: 'entrega' | 'retirada';
+  endereco?: IEndereco;
   valorFrete: number;
   valorTotal: number;
   valorProdutos: number;
-  status: 'aguardando_pagamento' | 'pagamento_aprovado' | 'em_preparacao' | 'enviado' | 'entregue' | 'cancelado';
+  status: 'aguardando_pagamento' | 'pagamento_aprovado' | 'em_preparacao' | 'enviado' | 'entregue' | 'pronto_retirada' | 'retirado' | 'cancelado';
   pagamento: IPagamento;
   rastreamento?: string;
   observacoes?: string;
@@ -54,6 +55,7 @@ export interface IPedidoData {
   dataCancelamento?: Date;
   dataEnvio?: Date;
   dataEntrega?: Date;
+  dataRetirada?: Date;
 }
 
 // Combinamos nossos dados com o tipo Document do Mongoose
@@ -113,13 +115,33 @@ const PedidoSchema = new Schema(
     nomeCliente: { type: String, required: true },
     emailCliente: { type: String, required: true },
     items: [ItemPedidoSchema],
-    endereco: EnderecoEntregaSchema,
+    metodoEntrega: {
+      type: String,
+      enum: ['entrega', 'retirada'],
+      required: true,
+      default: 'entrega'
+    },
+    endereco: {
+      type: EnderecoEntregaSchema,
+      required: function() {
+        return this.metodoEntrega === 'entrega';
+      }
+    },
     valorFrete: { type: Number, required: true, default: 0 },
     valorTotal: { type: Number, required: true },
     valorProdutos: { type: Number, required: true },
     status: { 
       type: String, 
-      enum: ['aguardando_pagamento', 'pagamento_aprovado', 'em_preparacao', 'enviado', 'entregue', 'cancelado'], 
+      enum: [
+        'aguardando_pagamento', 
+        'pagamento_aprovado', 
+        'em_preparacao', 
+        'enviado', 
+        'entregue', 
+        'pronto_retirada', 
+        'retirado', 
+        'cancelado'
+      ], 
       default: 'aguardando_pagamento', 
       required: true,
       index: true 
@@ -136,7 +158,8 @@ const PedidoSchema = new Schema(
     dataAtualizacao: { type: Date, default: Date.now },
     dataCancelamento: { type: Date },
     dataEnvio: { type: Date },
-    dataEntrega: { type: Date }
+    dataEntrega: { type: Date },
+    dataRetirada: { type: Date }
   },
   {
     timestamps: { createdAt: 'dataRegistro', updatedAt: 'dataAtualizacao' }
@@ -158,6 +181,7 @@ PedidoSchema.pre('save', function(next) {
 PedidoSchema.index({ usuario: 1, status: 1 });
 PedidoSchema.index({ dataRegistro: -1 });
 PedidoSchema.index({ status: 1, dataRegistro: -1 });
+PedidoSchema.index({ metodoEntrega: 1, status: 1 });
 
 // Evitar a redefinição do modelo durante hot reloads em desenvolvimento
 const PedidoModel = (mongoose.models.Pedido as Model<IPedido>) || 
