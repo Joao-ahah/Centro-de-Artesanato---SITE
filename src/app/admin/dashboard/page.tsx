@@ -19,6 +19,14 @@ interface DashboardData {
   clientesNovos: number;
   totalArtesaos: number;
   artesaosAtivos: number;
+  statusPedidos?: {
+    aguardandoPagamento: number;
+    pagamentoAprovado: number;
+    emPreparacao: number;
+    enviado: number;
+    entregue: number;
+    cancelado: number;
+  };
 }
 
 export default function AdminDashboard() {
@@ -175,33 +183,33 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Links rápidos */}
-                  <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="bg-white rounded-lg shadow-md p-6">
                   <h2 className="text-lg font-semibold text-gray-800 mb-4">Ações Rápidas</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <Link 
-                        href="/admin/produtos/novo" 
+                    <Link 
+                      href="/admin/produtos/novo" 
                       className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center"
-                      >
+                    >
                       <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center mr-3">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                       </div>
                       <span className="text-gray-700">Adicionar Produto</span>
-                      </Link>
-                      
-                      <Link 
-                        href="/admin/pedidos" 
+                    </Link>
+                    
+                    <Link 
+                      href="/admin/pedidos" 
                       className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center"
-                      >
+                    >
                       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                         </svg>
                       </div>
                       <span className="text-gray-700">Ver Pedidos</span>
-                      </Link>
-                      
+                    </Link>
+                    
                     <button
                       onClick={() => router.push('/admin/artesaos')}
                       className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center"
@@ -225,6 +233,76 @@ export default function AdminDashboard() {
                       </div>
                       <span className="text-gray-700">Produtos Esgotados</span>
                     </button>
+                  </div>
+                </div>
+
+                {/* Status dos Pedidos */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-4">Status de Pedidos</h2>
+                  
+                  {dados.statusPedidos ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="flex flex-col border rounded-lg p-4 bg-blue-50">
+                          <span className="text-sm text-gray-600">Pagamento Aprovado</span>
+                          <span className="text-2xl font-bold text-blue-700">{dados.statusPedidos.pagamentoAprovado}</span>
+                          <Link href="/admin/pedidos?status=pagamento_aprovado" className="text-xs text-blue-600 mt-2 hover:underline">
+                            Ver detalhes →
+                          </Link>
+                        </div>
+                        
+                        <div className="flex flex-col border rounded-lg p-4 bg-purple-50">
+                          <span className="text-sm text-gray-600">Em Confecção</span>
+                          <span className="text-2xl font-bold text-purple-700">{dados.statusPedidos.emPreparacao}</span>
+                          <Link href="/admin/pedidos?status=em_preparacao" className="text-xs text-purple-600 mt-2 hover:underline">
+                            Ver detalhes →
+                          </Link>
+                        </div>
+                        
+                        <div className="flex flex-col border rounded-lg p-4 bg-indigo-50">
+                          <span className="text-sm text-gray-600">Enviados</span>
+                          <span className="text-2xl font-bold text-indigo-700">{dados.statusPedidos.enviado}</span>
+                          <Link href="/admin/pedidos?status=enviado" className="text-xs text-indigo-600 mt-2 hover:underline">
+                            Ver detalhes →
+                          </Link>
+                        </div>
+                      </div>
+                      
+                      <div className="relative pt-1">
+                        <div className="flex mb-2 items-center justify-between">
+                          <div>
+                            <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                              Progresso de Pedidos
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs font-semibold inline-block text-blue-600">
+                              {Math.round((dados.statusPedidos.entregue / dados.totalPedidos) * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                          <div 
+                            style={{ width: `${Math.round((dados.statusPedidos.entregue / dados.totalPedidos) * 100)}%` }} 
+                            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500">
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">Informações sobre status de pedidos não disponíveis</p>
+                  )}
+                  
+                  <div className="mt-4 text-center">
+                    <Link 
+                      href="/admin/pedidos" 
+                      className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      Ver todos os pedidos
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </Link>
                   </div>
                 </div>
               </div>

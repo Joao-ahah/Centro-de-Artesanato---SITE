@@ -108,7 +108,7 @@ export default function Home() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {destaques.map((produto) => (
-              <div key={produto.id} className="card flex flex-col">
+              <Link key={produto.id} href={`/produtos/${produto.id}`} className="card flex flex-col hover:shadow-lg transition-shadow duration-300">
                 <div className="relative h-64 bg-amber-100">
                   {/* Placeholder para imagem - em produção, substituir por imagens reais */}
                   <div className="w-full h-full flex items-center justify-center text-amber-500 text-6xl">
@@ -127,10 +127,10 @@ export default function Home() {
                   <p className="text-gray-600 text-sm mb-4 flex-grow">{produto.descricao}</p>
                   <div className="flex justify-between items-center">
                     <span className="text-xl font-bold text-amber-900">R$ {produto.preco.toFixed(2)}</span>
-                    <button className="btn-primary text-sm">Adicionar</button>
+                    <span className="btn-primary text-sm pointer-events-none">Adicionar</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
           

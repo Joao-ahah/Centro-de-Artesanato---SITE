@@ -55,29 +55,23 @@ const EMAIL_DESTINO = process.env.EMAIL_CONTATO || 'johnsantosapzone@gmail.com';
 // Função para enviar email
 async function enviarEmail(mensagem: IMensagemContato) {
   try {
-    // Em um ambiente real, você configuraria um serviço SMTP
-    // Para desenvolvimento, estamos apenas logando a mensagem
-    console.log(`[SIMULAÇÃO DE EMAIL] Nova mensagem de contato de ${mensagem.nome} (${mensagem.email})`);
+    console.log(`[ENVIANDO EMAIL] Nova mensagem de contato de ${mensagem.nome} (${mensagem.email})`);
     console.log(`Assunto: ${mensagem.assunto || 'Sem assunto'}`);
-    console.log(`Mensagem: ${mensagem.mensagem}`);
     console.log(`Enviando para: ${EMAIL_DESTINO}`);
     
-    // Exemplo de como seria a implementação com Nodemailer
-    // Descomente e configure para usar em produção
-    
-    /*
+    // Implementação com Nodemailer para produção
     const transporter = nodemailer.createTransport({
-      service: 'gmail', // Ou outro serviço
+      service: 'gmail',
       auth: {
-        user: 'seu-email@gmail.com',
-        pass: 'sua-senha-ou-app-password'
+        user: process.env.EMAIL_USER || 'johnsantosapzone@gmail.com', // Usar variáveis de ambiente
+        pass: process.env.EMAIL_PASSWORD || 'sua-senha-app-segura', // Recomendado usar app password do Google
       }
     });
 
     const info = await transporter.sendMail({
-      from: `"Centro de Artesanato" <seu-email@gmail.com>`,
+      from: `"Centro de Artesanato" <${process.env.EMAIL_USER || 'johnsantosapzone@gmail.com'}>`,
       to: EMAIL_DESTINO,
-      subject: `Nova mensagem de contato: ${mensagem.assunto || 'Sem assunto'}`,
+      subject: `Nova mensagem de contato: ${mensagem.assunto || 'Contato via site'}`,
       text: `Nome: ${mensagem.nome}\nEmail: ${mensagem.email}\nMensagem: ${mensagem.mensagem}`,
       html: `
         <h2>Nova mensagem de contato</h2>
@@ -88,10 +82,8 @@ async function enviarEmail(mensagem: IMensagemContato) {
         <p>${mensagem.mensagem}</p>
       `
     });
-
-    console.log('Email enviado:', info.messageId);
-    */
     
+    console.log('Email enviado com sucesso:', info.messageId);
     return true;
   } catch (error) {
     console.error('Erro ao enviar email:', error);

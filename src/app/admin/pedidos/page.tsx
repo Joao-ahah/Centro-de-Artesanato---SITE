@@ -89,25 +89,42 @@ export default function GerenciamentoPedidos() {
 
   const atualizarStatusPedido = async (pedidoId: string, novoStatus: string) => {
     try {
+      setCarregando(true);
+      
+      // Confirmação do usuário
+      const mensagens = {
+        'aguardando_pagamento': 'Alterar para "Aguardando Pagamento"?',
+        'pagamento_aprovado': 'Confirmar aprovação do pagamento?',
+        'em_preparacao': 'Marcar pedido como "Em Confecção"?',
+        'enviado': 'Confirmar que o pedido foi enviado?',
+        'entregue': 'Marcar pedido como entregue?',
+        'cancelado': 'ATENÇÃO: Tem certeza que deseja cancelar este pedido?'
+      };
+      
+      // Pedir confirmação do usuário
+      if (!window.confirm(mensagens[novoStatus] || `Alterar status para ${novoStatus}?`)) {
+        setCarregando(false);
+        return;
+      }
+      
+      // Atualizar status via API
       const response = await axios.patch(`/api/admin/pedidos/${pedidoId}`, {
         status: novoStatus
       });
       
       if (response.data.success) {
-        // Atualiza o pedido na lista local
-        setPedidos(prevPedidos => 
-          prevPedidos.map(pedido => 
-            pedido._id === pedidoId ? { ...pedido, status: novoStatus as any } : pedido
-          )
-        );
-        
         toast.success('Status do pedido atualizado com sucesso!');
+        
+        // Atualizar a lista de pedidos
+        await buscarPedidos();
       } else {
-        throw new Error(response.data.message || 'Falha ao atualizar status');
+        throw new Error(response.data.message || 'Erro ao atualizar status');
       }
-    } catch (error: any) {
-      console.error('Erro ao atualizar status:', error);
-      toast.error(error.message || 'Erro ao atualizar status do pedido');
+    } catch (error) {
+      console.error('Erro ao atualizar status do pedido:', error);
+      toast.error('Não foi possível atualizar o status do pedido. Tente novamente.');
+    } finally {
+      setCarregando(false);
     }
   };
 

@@ -21,6 +21,13 @@ export interface IProduto extends Document {
   totalAvaliacoes?: number;
   tags?: string[];
   ativo: boolean;
+  avaliacoes?: Array<{
+    usuario: string;
+    nome: string;
+    nota: number;
+    comentario?: string;
+    data: Date;
+  }>;
 }
 
 // Interface para o modelo de Produto
@@ -111,6 +118,17 @@ const ProdutoSchema = new Schema<IProduto>(
     ativo: {
       type: Boolean,
       default: true
+    },
+    avaliacoes: {
+      type: [
+        {
+          usuario: String,
+          nome: String,
+          nota: Number,
+          comentario: String,
+          data: Date
+        }
+      ]
     }
   },
   {
@@ -156,6 +174,13 @@ export class Produto {
   totalAvaliacoes?: number;
   tags?: string[];
   ativo: boolean;
+  avaliacoes?: Array<{
+    usuario: string;
+    nome: string;
+    nota: number;
+    comentario?: string;
+    data: Date;
+  }>;
 
   constructor(produto: Partial<Produto>) {
     this.nome = produto.nome || '';
@@ -177,6 +202,7 @@ export class Produto {
     this.totalAvaliacoes = produto.totalAvaliacoes;
     this.tags = produto.tags;
     this.ativo = produto.ativo ?? true;
+    this.avaliacoes = produto.avaliacoes;
     this._id = produto._id;
   }
 } 

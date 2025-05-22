@@ -128,7 +128,7 @@ export default function PedidosPage() {
     const statusMap: Record<string, string> = {
       'aguardando_pagamento': 'Aguardando Pagamento',
       'pagamento_aprovado': 'Pagamento Aprovado',
-      'em_preparacao': 'Em Preparação',
+      'em_preparacao': 'Em Confecção',
       'enviado': 'Enviado',
       'entregue': 'Entregue',
       'cancelado': 'Cancelado'
@@ -149,6 +149,75 @@ export default function PedidosPage() {
     };
     
     return colorMap[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Componente de barra de progresso para acompanhamento do pedido
+  const AcompanhamentoPedido = ({ status }: { status: string }) => {
+    // Definir as etapas do pedido em ordem
+    const etapas = [
+      { key: 'aguardando_pagamento', label: 'Aguardando Pagamento' },
+      { key: 'pagamento_aprovado', label: 'Pagamento Aprovado' },
+      { key: 'em_preparacao', label: 'Em Confecção' },
+      { key: 'enviado', label: 'Enviado' },
+      { key: 'entregue', label: 'Entregue' }
+    ];
+    
+    // Encontrar o índice da etapa atual
+    const etapaAtualIndex = etapas.findIndex(etapa => etapa.key === status);
+    
+    // Se o pedido foi cancelado, mostrar uma mensagem específica
+    if (status === 'cancelado') {
+      return (
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center justify-center bg-red-50 p-3 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span className="text-red-700 font-medium">Pedido Cancelado</span>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="p-4 border-t border-gray-200">
+        <h4 className="font-medium text-gray-700 mb-3">Acompanhamento do Pedido</h4>
+        <div className="relative">
+          {/* Linha de progresso */}
+          <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
+            <div
+              style={{ width: `${Math.max(0, Math.min(100, (etapaAtualIndex / (etapas.length - 1)) * 100))}%` }}
+              className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"
+            ></div>
+          </div>
+          
+          {/* Etapas */}
+          <div className="flex justify-between">
+            {etapas.map((etapa, index) => {
+              const isActive = index <= etapaAtualIndex;
+              const isPast = index < etapaAtualIndex;
+              
+              return (
+                <div key={etapa.key} className="flex flex-col items-center">
+                  <div className={`w-6 h-6 rounded-full mb-1 flex items-center justify-center ${
+                    isActive ? 'bg-green-500 text-white' : 'bg-gray-200'
+                  }`}>
+                    {isPast ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <span className="text-xs">{index + 1}</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-center max-w-[80px]">{etapa.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Formata data
@@ -207,6 +276,9 @@ export default function PedidosPage() {
                     </div>
                   </div>
                   
+                  {/* Adicionar componente de acompanhamento do pedido */}
+                  <AcompanhamentoPedido status={pedido.status} />
+
                   <div className="p-4">
                     <h3 className="text-lg font-semibold text-gray-800 mb-3">Itens do Pedido</h3>
                     

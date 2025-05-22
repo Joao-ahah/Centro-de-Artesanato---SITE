@@ -7,11 +7,12 @@ import Image from 'next/image';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useCarrinho } from '@/contexts/CarrinhoContext';
-import { FaShoppingCart, FaHeart, FaShare, FaArrowLeft } from 'react-icons/fa';
+import { FaShoppingCart, FaHeart, FaShare, FaArrowLeft, FaStar } from 'react-icons/fa';
 import { formatarMoeda } from '@/utils/formatters';
 import { Produto } from '@/models/produto';
 import Estrelas from '@/components/Estrelas';
 import Loading from '@/components/Loading';
+import AvaliacaoModal from '@/components/AvaliacaoModal';
 
 export default function DetalhesProduto() {
   const params = useParams();
@@ -23,8 +24,22 @@ export default function DetalhesProduto() {
   const [imagemAtiva, setImagemAtiva] = useState(0);
   const [produtosRelacionados, setProdutosRelacionados] = useState<Produto[]>([]);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [showAvaliacaoModal, setShowAvaliacaoModal] = useState(false);
+
+  // Função para recarregar o produto após uma avaliação
+  const recarregarProduto = async () => {
+    try {
+      const response = await axios.get(`/api/produtos/${params.id}`);
+      if (response.data.success) {
+        setProduto(response.data.produto);
+      }
+    } catch (error) {
+      console.error('Erro ao recarregar produto:', error);
+    }
+  };
 
   useEffect(() => {
+    // Fetch do produto
     const fetchProduto = async () => {
       setLoading(true);
       try {
@@ -59,12 +74,14 @@ export default function DetalhesProduto() {
     }
   }, [params.id, router]);
 
+  // Função para decrementar a quantidade
   const handleDecrementarQuantidade = () => {
     if (quantidade > 1) {
       setQuantidade(quantidade - 1);
     }
   };
 
+  // Função para incrementar a quantidade
   const handleIncrementarQuantidade = () => {
     if (produto && quantidade < produto.quantidade) {
       setQuantidade(quantidade + 1);
@@ -73,6 +90,7 @@ export default function DetalhesProduto() {
     }
   };
 
+  // Função para adicionar ao carrinho
   const handleAdicionarAoCarrinho = async () => {
     if (!produto) return;
     
@@ -88,10 +106,6 @@ export default function DetalhesProduto() {
       });
       
       toast.success('Produto adicionado ao carrinho!');
-      
-      // Não redirecionar após adicionar ao carrinho
-      // Apenas manter o usuário na página atual
-      
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
       toast.error('Erro ao adicionar produto ao carrinho.');
@@ -100,6 +114,7 @@ export default function DetalhesProduto() {
     }
   };
 
+  // Função para comprar agora
   const handleComprarAgora = async () => {
     if (!produto) return;
     
@@ -115,10 +130,7 @@ export default function DetalhesProduto() {
       });
       
       toast.success('Produto adicionado ao carrinho!');
-  
-      // Redirecionar para o carrinho
       router.push('/carrinho');
-      
     } catch (error) {
       console.error('Erro ao adicionar ao carrinho:', error);
       toast.error('Erro ao adicionar produto ao carrinho.');
@@ -134,11 +146,11 @@ export default function DetalhesProduto() {
   if (!produto) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">Produto não encontrado</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-4">Produto não encontrado</h1>
         <p className="text-gray-600 mb-6">O produto que você está procurando não existe ou foi removido.</p>
         <Link href="/produtos" className="inline-block bg-amber-600 text-white px-6 py-2 rounded-md hover:bg-amber-700">
           Voltar para a loja
-          </Link>
+        </Link>
       </div>
     );
   }
@@ -161,26 +173,25 @@ export default function DetalhesProduto() {
           </div>
         </div>
       </div>
-        
-      {/* Detalhes do produto */}
+      
+      {/* Conteúdo principal */}
       <div className="container mx-auto px-4 py-8">
-        <Link 
-          href="/produtos" 
-          className="inline-flex items-center text-amber-600 hover:text-amber-800 mb-6"
-        >
+        {/* Botão voltar */}
+        <Link href="/produtos" className="inline-flex items-center text-amber-600 hover:text-amber-800 mb-6">
           <FaArrowLeft className="mr-2" /> Voltar para produtos
         </Link>
 
+        {/* Detalhes do produto */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="md:flex">
             {/* Galeria de imagens */}
             <div className="md:w-1/2 p-6">
               <div className="relative h-96 mb-4 bg-gray-100 rounded-lg overflow-hidden">
                 {produto.imagens && produto.imagens.length > 0 ? (
-                <Image 
+                  <Image 
                     src={produto.imagens[imagemAtiva]}
-                  alt={produto.nome}
-                  fill
+                    alt={produto.nome}
+                    fill
                     className="object-contain"
                   />
                 ) : (
@@ -209,13 +220,13 @@ export default function DetalhesProduto() {
                       }`}
                     >
                       <div className="relative w-full h-full">
-                      <Image 
-                        src={imagem}
-                        alt={`${produto.nome} - imagem ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
+                        <Image 
+                          src={imagem}
+                          alt={`${produto.nome} - imagem ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -233,7 +244,7 @@ export default function DetalhesProduto() {
                   </p>
                 )}
               
-              <div className="flex items-center mb-4">
+                <div className="flex items-center mb-4">
                   <Estrelas 
                     avaliacao={produto.avaliacao || 0} 
                     tamanho={20} 
@@ -241,10 +252,16 @@ export default function DetalhesProduto() {
                   />
                   <span className="text-gray-600 ml-2">
                     ({produto.totalAvaliacoes || 0} avaliações)
-                </span>
-              </div>
+                  </span>
+                  <button 
+                    onClick={() => setShowAvaliacaoModal(true)}
+                    className="ml-4 text-sm text-amber-600 hover:text-amber-800 flex items-center"
+                  >
+                    <FaStar className="mr-1" /> Avaliar produto
+                  </button>
+                </div>
               
-              <div className="mb-6">
+                <div className="mb-6">
                   <p className="text-3xl font-bold text-amber-600">
                     {formatarMoeda(produto.preco)}
                   </p>
@@ -317,13 +334,13 @@ export default function DetalhesProduto() {
                         onClick={handleAdicionarAoCarrinho}
                         disabled={addingToCart}
                         className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors"
-                >
+                      >
                         {addingToCart ? (
                           <span className="inline-block animate-spin mr-2">⟳</span>
                         ) : (
                           <FaShoppingCart className="mr-2" />
                         )}
-                  Adicionar ao Carrinho
+                        Adicionar ao Carrinho
                       </button>
                       
                       <button
@@ -353,43 +370,46 @@ export default function DetalhesProduto() {
                   </button>
                 </div>
               </div>
-              </div>
             </div>
           </div>
         </div>
         
         {/* Produtos relacionados */}
         {produtosRelacionados.length > 0 && (
-        <div className="container mx-auto px-4 py-12">
+          <div className="mt-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Produtos Relacionados</h2>
             
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {produtosRelacionados.map((produto) => (
-              <Link key={produto._id} href={`/produtos/${produto._id}`}>
-                <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative h-48">
-                    {produto.imagens && produto.imagens.length > 0 ? (
-                      <Image 
-                        src={produto.imagens[0]}
-                        alt={produto.nome}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                        <span className="text-gray-500">Sem imagem</span>
-                      </div>
-                    )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {produtosRelacionados.map((produtoRelacionado) => (
+                <Link key={produtoRelacionado._id} href={`/produtos/${produtoRelacionado._id}`}>
+                  <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="relative h-48">
+                      {produtoRelacionado.imagens && produtoRelacionado.imagens.length > 0 ? (
+                        <Image 
+                          src={produtoRelacionado.imagens[0]}
+                          alt={produtoRelacionado.nome}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                          <span className="text-gray-500">Sem imagem</span>
+                        </div>
+                      )}
                     </div>
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-1">{produto.nome}</h3>
-                    <p className="text-amber-600 font-bold">{formatarMoeda(produto.preco)}</p>
-                    <div className="flex items-center mt-2">
-                      <Estrelas 
-                        avaliacao={produto.avaliacao || 0} 
-                        tamanho={16} 
-                        espacamento={1}
-                      />
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-1">
+                        {produtoRelacionado.nome}
+                      </h3>
+                      <p className="text-amber-600 font-bold">
+                        {formatarMoeda(produtoRelacionado.preco)}
+                      </p>
+                      <div className="flex items-center mt-2">
+                        <Estrelas 
+                          avaliacao={produtoRelacionado.avaliacao || 0} 
+                          tamanho={16} 
+                          espacamento={1}
+                        />
                       </div>
                     </div>
                   </div>
@@ -398,6 +418,18 @@ export default function DetalhesProduto() {
             </div>
           </div>
         )}
+        
+        {/* Modal de Avaliação */}
+        {produto && (
+          <AvaliacaoModal
+            produtoId={produto._id || ''}
+            produtoNome={produto.nome}
+            isOpen={showAvaliacaoModal}
+            onClose={() => setShowAvaliacaoModal(false)}
+            onAvaliacaoSalva={recarregarProduto}
+          />
+        )}
+      </div>
     </div>
   );
 } 

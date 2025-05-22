@@ -102,9 +102,7 @@ FACEBOOK_CLIENT_SECRET=seu_cliente_secret_do_facebook
 - **Erro de conexão com MongoDB**: Verifique se o MongoDB está rodando e acessível
 - **Erro de autenticação social**: Verifique se as credenciais estão corretas e se os URIs de redirecionamento estão configurados corretamente
 - **Imagens não carregando**: Se estiver enfrentando problemas com imagens do Unsplash, pode ser por restrições de rede ou firewall
-- **Modo de desenvolvimento**: Para testes, você pode acessar o sistema com o login de administrador:
-  - Email: admin@centroartesanato.com.br
-  - Senha: senha123
+- **Modo de desenvolvimento**: Para testes, você pode acessar o sistema com 
 
 ## Próximas Etapas
 

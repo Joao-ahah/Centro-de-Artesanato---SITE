@@ -23,7 +23,16 @@ export async function GET(req: NextRequest) {
           vendasHoje: 780,
           vendasMes: 12450,
           clientesNovos: 28,
-          totalArtesaos: 12
+          totalArtesaos: 12,
+          artesaosAtivos: 10,
+          statusPedidos: {
+            aguardandoPagamento: 5,
+            pagamentoAprovado: 7,
+            emPreparacao: 10,
+            enviado: 15,
+            entregue: 82,
+            cancelado: 5
+          }
         }
       });
     }
@@ -86,6 +95,14 @@ export async function GET(req: NextRequest) {
     // Contar artesãos ativos
     const artesaosAtivos = await ArtesaoModel.countDocuments({ ativo: true });
     
+    // Contar pedidos por status
+    const aguardandoPagamento = await PedidoModel.countDocuments({ status: 'aguardando_pagamento' });
+    const pagamentoAprovado = await PedidoModel.countDocuments({ status: 'pagamento_aprovado' });
+    const emPreparacao = await PedidoModel.countDocuments({ status: 'em_preparacao' });
+    const enviado = await PedidoModel.countDocuments({ status: 'enviado' });
+    const entregue = await PedidoModel.countDocuments({ status: 'entregue' });
+    const cancelado = await PedidoModel.countDocuments({ status: 'cancelado' });
+    
     return NextResponse.json({
       success: true,
       data: {
@@ -99,7 +116,15 @@ export async function GET(req: NextRequest) {
         totalUsuarios,
         clientesNovos,
         totalArtesaos,
-        artesaosAtivos
+        artesaosAtivos,
+        statusPedidos: {
+          aguardandoPagamento,
+          pagamentoAprovado,
+          emPreparacao,
+          enviado,
+          entregue,
+          cancelado
+        }
       }
     });
     
