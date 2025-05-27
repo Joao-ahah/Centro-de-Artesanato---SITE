@@ -123,12 +123,16 @@ export function useAuth() {
           sessionStorage.setItem('user', JSON.stringify(data.usuario));
         }
         
+        // Atualizar estado imediatamente
         setUser(data.usuario);
         setAuthenticated(true);
+        setLoading(false);
+        
         console.log('Login bem-sucedido. Usuário:', data.usuario);
         return { success: true };
       } else {
         console.log('Login falhou:', data.message);
+        setLoading(false);
         return { 
           success: false, 
           message: data.message || 'Erro ao fazer login' 
@@ -136,18 +140,19 @@ export function useAuth() {
       }
     } catch (error: any) {
       console.error('Erro ao fazer login:', error);
+      setLoading(false);
       return { 
         success: false, 
         message: error.message || 'Erro de conexão. Verifique sua internet.'
       };
-    } finally {
-      setLoading(false);
     }
   };
 
   const register = async (userData: { nome: string; email: string; senha: string; telefone?: string }) => {
     setLoading(true);
     try {
+      console.log('Tentando registro com:', { nome: userData.nome, email: userData.email });
+      
       const response = await fetch('/api/auth/registro', {
         method: 'POST',
         headers: {
@@ -157,18 +162,25 @@ export function useAuth() {
       });
       
       const data = await response.json();
+      console.log('Resposta do registro:', data);
       
       if (response.ok && data.success) {
         // Salvar token no localStorage
         localStorage.setItem('token', data.token);
         
-        // Salvar dados do usuário no sessionStorage
+        // Salvar dados do usuário no sessionStorage (não lembrar por padrão)
         sessionStorage.setItem('user', JSON.stringify(data.usuario));
         
+        // Atualizar estado imediatamente
         setUser(data.usuario);
         setAuthenticated(true);
+        setLoading(false);
+        
+        console.log('Registro bem-sucedido. Usuário:', data.usuario);
         return { success: true };
       } else {
+        console.log('Registro falhou:', data.message);
+        setLoading(false);
         return { 
           success: false, 
           message: data.message || 'Erro ao registrar conta' 
@@ -176,12 +188,11 @@ export function useAuth() {
       }
     } catch (error: any) {
       console.error('Erro ao registrar:', error);
+      setLoading(false);
       return { 
         success: false, 
         message: error.message || 'Erro de conexão. Verifique sua internet.'
       };
-    } finally {
-      setLoading(false);
     }
   };
 

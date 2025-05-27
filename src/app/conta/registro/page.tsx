@@ -24,10 +24,10 @@ export default function RegistroPage() {
 
   // Redirecionar se já estiver autenticado
   useEffect(() => {
-    if (authenticated) {
+    if (authenticated && !loading) {
       router.push('/');
     }
-  }, [authenticated, router]);
+  }, [authenticated, loading, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -82,9 +82,12 @@ export default function RegistroPage() {
         throw new Error(result.message);
       }
 
-      // Redirecionar para a página inicial
-      router.push('/');
-      router.refresh();
+      // Aguardar um pouco para garantir que o estado foi atualizado
+      setTimeout(() => {
+        // Redirecionar para a página inicial
+        router.push('/');
+      }, 100);
+      
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro ao criar conta');
     } finally {

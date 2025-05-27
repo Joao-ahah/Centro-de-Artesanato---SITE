@@ -24,7 +24,7 @@ export default function LoginPage() {
 
   // Redirecionar se já estiver autenticado
   useEffect(() => {
-    if (authenticated && user) {
+    if (authenticated && user && !loading) {
       console.log('Usuário já autenticado, redirecionando...');
       if (redirectPath) {
         router.push(redirectPath);
@@ -34,7 +34,7 @@ export default function LoginPage() {
         router.push('/');
       }
     }
-  }, [authenticated, user, router, redirectPath]);
+  }, [authenticated, user, loading, router, redirectPath]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -54,14 +54,21 @@ export default function LoginPage() {
       const result = await login(formData.email, formData.senha, formData.lembrar);
       
       if (result.success) {
-        // Login bem-sucedido - redirecionamento é tratado no useEffect
+        // Login bem-sucedido - aguardar um pouco e redirecionar
+        setTimeout(() => {
+          if (redirectPath) {
+            router.push(redirectPath);
+          } else {
+            router.push('/');
+          }
+        }, 100);
       } else {
         setError(result.message || 'Falha no login. Verifique suas credenciais.');
+        setLoading(false);
       }
     } catch (error: any) {
       console.error('Erro no login:', error);
       setError(error.message || 'Ocorreu um erro ao fazer login. Tente novamente.');
-    } finally {
       setLoading(false);
     }
   };

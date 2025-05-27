@@ -7,7 +7,7 @@ import Image from 'next/image';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useCarrinho } from '@/contexts/CarrinhoContext';
-import { FaShoppingCart, FaHeart, FaShare, FaArrowLeft, FaStar } from 'react-icons/fa';
+import { FaShoppingCart, FaHeart, FaShare, FaArrowLeft, FaStar, FaEnvelope, FaTimes } from 'react-icons/fa';
 import { formatarMoeda } from '@/utils/formatters';
 import { Produto } from '@/models/produto';
 import Estrelas from '@/components/Estrelas';
@@ -25,6 +25,16 @@ export default function DetalhesProduto() {
   const [produtosRelacionados, setProdutosRelacionados] = useState<Produto[]>([]);
   const [addingToCart, setAddingToCart] = useState(false);
   const [showAvaliacaoModal, setShowAvaliacaoModal] = useState(false);
+  const [showEncomendaModal, setShowEncomendaModal] = useState(false);
+  const [encomendaData, setEncomendaData] = useState({
+    nome: '',
+    email: '',
+    telefone: '',
+    quantidade: '',
+    observacoes: '',
+    prazoDesejado: ''
+  });
+  const [enviandoEncomenda, setEnviandoEncomenda] = useState(false);
 
   // Função para recarregar o produto após uma avaliação
   const recarregarProduto = async () => {
@@ -139,6 +149,60 @@ export default function DetalhesProduto() {
     }
   };
 
+  // Função para abrir modal de encomenda
+  const handleSolicitarEncomenda = () => {
+    setShowEncomendaModal(true);
+  };
+
+  // Função para lidar com mudanças no formulário de encomenda
+  const handleEncomendaChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setEncomendaData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Função para enviar solicitação de encomenda
+  const handleEnviarEncomenda = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!encomendaData.nome || !encomendaData.email || !encomendaData.quantidade) {
+      toast.error('Por favor, preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    setEnviandoEncomenda(true);
+
+    try {
+      const response = await axios.post('/api/encomendas', {
+        produtoId: produto?._id,
+        produtoNome: produto?.nome,
+        ...encomendaData
+      });
+
+      if (response.data.success) {
+        toast.success('Solicitação de encomenda enviada com sucesso! Entraremos em contato em breve.');
+        setShowEncomendaModal(false);
+        setEncomendaData({
+          nome: '',
+          email: '',
+          telefone: '',
+          quantidade: '',
+          observacoes: '',
+          prazoDesejado: ''
+        });
+      } else {
+        throw new Error(response.data.message || 'Erro ao enviar solicitação');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Erro ao enviar solicitação de encomenda.');
+      console.error('Erro ao enviar encomenda:', error);
+    } finally {
+      setEnviandoEncomenda(false);
+    }
+  };
+
   if (loading) {
     return <Loading />;
   }
@@ -157,6 +221,154 @@ export default function DetalhesProduto() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
+      {/* Modal de Encomenda */}
+      {showEncomendaModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Solicitar Encomenda</h2>
+                <button
+                  onClick={() => setShowEncomendaModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <FaTimes size={24} />
+                </button>
+              </div>
+
+              <div className="mb-6 p-4 bg-amber-50 rounded-lg">
+                <h3 className="font-semibold text-amber-800 mb-2">Produto: {produto.nome}</h3>
+                <p className="text-amber-700 text-sm">
+                  Para grandes quantidades ou produtos personalizados, solicite um orçamento.
+                  Entraremos em contato em até 24 horas.
+                </p>
+              </div>
+
+              <form onSubmit={handleEnviarEncomenda}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">
+                      Nome completo <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="nome"
+                      name="nome"
+                      value={encomendaData.nome}
+                      onChange={handleEncomendaChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                      Email <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={encomendaData.email}
+                      onChange={handleEncomendaChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="telefone" className="block text-sm font-medium text-gray-700 mb-1">
+                      Telefone
+                    </label>
+                    <input
+                      type="tel"
+                      id="telefone"
+                      name="telefone"
+                      value={encomendaData.telefone}
+                      onChange={handleEncomendaChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="quantidade" className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantidade desejada <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="quantidade"
+                      name="quantidade"
+                      min="1"
+                      value={encomendaData.quantidade}
+                      onChange={handleEncomendaChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      required
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label htmlFor="prazoDesejado" className="block text-sm font-medium text-gray-700 mb-1">
+                      Prazo desejado
+                    </label>
+                    <input
+                      type="text"
+                      id="prazoDesejado"
+                      name="prazoDesejado"
+                      value={encomendaData.prazoDesejado}
+                      onChange={handleEncomendaChange}
+                      placeholder="Ex: 15 dias, 1 mês..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-6">
+                  <label htmlFor="observacoes" className="block text-sm font-medium text-gray-700 mb-1">
+                    Observações e personalizações
+                  </label>
+                  <textarea
+                    id="observacoes"
+                    name="observacoes"
+                    rows={4}
+                    value={encomendaData.observacoes}
+                    onChange={handleEncomendaChange}
+                    placeholder="Descreva detalhes específicos, cores, tamanhos, personalizações..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  ></textarea>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEncomendaModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={enviandoEncomenda}
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md disabled:opacity-50"
+                  >
+                    {enviandoEncomenda ? 'Enviando...' : 'Solicitar Orçamento'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Avaliação */}
+      {showAvaliacaoModal && produto && (
+        <AvaliacaoModal
+          produtoId={produto._id}
+          produtoNome={produto.nome}
+          onClose={() => setShowAvaliacaoModal(false)}
+          onAvaliacaoEnviada={recarregarProduto}
+        />
+      )}
+
       {/* Navegação de Migalhas */}
       <div className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-3">
@@ -329,33 +541,55 @@ export default function DetalhesProduto() {
                       </div>
                     </div>
                     
-                    <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                          onClick={handleAdicionarAoCarrinho}
+                          disabled={addingToCart}
+                          className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors"
+                        >
+                          {addingToCart ? (
+                            <span className="inline-block animate-spin mr-2">⟳</span>
+                          ) : (
+                            <FaShoppingCart className="mr-2" />
+                          )}
+                          Adicionar ao Carrinho
+                        </button>
+                        
+                        <button
+                          onClick={handleComprarAgora}
+                          disabled={addingToCart}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors"
+                        >
+                          Comprar Agora
+                        </button>
+                      </div>
+
+                      {/* Botão de Encomenda */}
                       <button
-                        onClick={handleAdicionarAoCarrinho}
-                        disabled={addingToCart}
-                        className="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors"
+                        onClick={handleSolicitarEncomenda}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors"
                       >
-                        {addingToCart ? (
-                          <span className="inline-block animate-spin mr-2">⟳</span>
-                        ) : (
-                          <FaShoppingCart className="mr-2" />
-                        )}
-                        Adicionar ao Carrinho
-                      </button>
-                      
-                      <button
-                        onClick={handleComprarAgora}
-                        disabled={addingToCart}
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors"
-                      >
-                        Comprar Agora
+                        <FaEnvelope className="mr-2" />
+                        Solicitar Encomenda (Grandes Quantidades)
                       </button>
                     </div>
                   </>
                 ) : (
-                  <div className="bg-red-100 text-red-800 p-4 rounded-md text-center">
-                    <p className="font-medium">Este produto está esgotado no momento.</p>
-                    <p className="text-sm mt-1">Confira outros produtos semelhantes abaixo.</p>
+                  <div className="space-y-4">
+                    <div className="bg-red-100 text-red-800 p-4 rounded-md text-center">
+                      <p className="font-medium">Este produto está esgotado no momento.</p>
+                      <p className="text-sm mt-1">Confira outros produtos semelhantes abaixo.</p>
+                    </div>
+                    
+                    {/* Mesmo com produto esgotado, permitir encomenda */}
+                    <button
+                      onClick={handleSolicitarEncomenda}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-md flex items-center justify-center transition-colors"
+                    >
+                      <FaEnvelope className="mr-2" />
+                      Solicitar Encomenda
+                    </button>
                   </div>
                 )}
                 
@@ -417,17 +651,6 @@ export default function DetalhesProduto() {
               ))}
             </div>
           </div>
-        )}
-        
-        {/* Modal de Avaliação */}
-        {produto && (
-          <AvaliacaoModal
-            produtoId={produto._id || ''}
-            produtoNome={produto.nome}
-            isOpen={showAvaliacaoModal}
-            onClose={() => setShowAvaliacaoModal(false)}
-            onAvaliacaoSalva={recarregarProduto}
-          />
         )}
       </div>
     </div>
