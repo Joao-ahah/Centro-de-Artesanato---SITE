@@ -1,83 +1,99 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import axios from 'axios';
+
+interface Noticia {
+  _id: string;
+  titulo: string;
+  slug: string;
+  resumo: string;
+  conteudo: string;
+  imagem: string;
+  autor: string;
+  categorias: string[];
+  publicado: boolean;
+  dataPublicacao: string;
+  visualizacoes: number;
+  tags: string[];
+}
 
 export default function BlogPage() {
-  // Array de posts do blog (simulado)
-  const blogPosts = [
-    {
-      id: '1',
-      titulo: 'Feira de Artesanato de Primavera: Conheça os Destaques',
-      slug: 'feira-artesanato-primavera',
-      resumo: 'A Feira de Artesanato de Primavera traz o melhor do artesanato nacional com foco em peças que celebram a estação das flores.',
-      conteudo: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.',
-      imagem: 'https://images.unsplash.com/photo-1555639594-48ba11f2c095',
-      data: '2023-09-05',
-      autor: 'Maria Oliveira',
-      categorias: ['Eventos', 'Feira']
-    },
-    {
-      id: '2',
-      titulo: 'Workshop de Cerâmica Tradicional com Mestre Artesão',
-      slug: 'workshop-ceramica-tradicional',
-      resumo: 'Aprenda técnicas ancestrais de cerâmica com o renomado mestre artesão José da Silva em um workshop exclusivo.',
-      conteudo: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.',
-      imagem: 'https://images.unsplash.com/photo-1565193566173-7a0af771d71a',
-      data: '2023-08-20',
-      autor: 'Carlos Santos',
-      categorias: ['Workshop', 'Cerâmica']
-    },
-    {
-      id: '3',
-      titulo: 'Artesãos Selecionados para Programa de Mentoria 2023',
-      slug: 'artesaos-programa-mentoria',
-      resumo: 'Conheça os 15 artesãos de todo o Brasil selecionados para o programa de mentoria e apoio ao empreendedorismo artesanal.',
-      conteudo: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.',
-      imagem: 'https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7',
-      data: '2023-08-10',
-      autor: 'Ana Pereira',
-      categorias: ['Notícias', 'Capacitação']
-    },
-    {
-      id: '4',
-      titulo: 'Nova Coleção: Artesanato Contemporâneo do Nordeste',
-      slug: 'colecao-artesanato-nordeste',
-      resumo: 'Lançamos nossa nova coleção de artesanato contemporâneo com peças exclusivas produzidas por artesãos nordestinos.',
-      conteudo: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.',
-      imagem: 'https://images.unsplash.com/photo-1560393464-5c69a73c5770',
-      data: '2023-07-25',
-      autor: 'Roberto Mendes',
-      categorias: ['Lançamento', 'Coleção']
-    },
-    {
-      id: '5',
-      titulo: 'Parceria com Comunidades Quilombolas para Produção Sustentável',
-      slug: 'parceria-comunidades-quilombolas',
-      resumo: 'Nova iniciativa firma parceria com comunidades quilombolas para produção de artesanato sustentável com materiais nativos.',
-      conteudo: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.',
-      imagem: 'https://images.unsplash.com/photo-1617659258448-a782e85bd9e5',
-      data: '2023-07-15',
-      autor: 'Juliana Costa',
-      categorias: ['Sustentabilidade', 'Comunidades']
-    },
-    {
-      id: '6',
-      titulo: 'Exposição Fotográfica: "Mãos que Transformam"',
-      slug: 'exposicao-maos-que-transformam',
-      resumo: 'Exposição de fotografias documenta o processo criativo de artesãos brasileiros e a transformação de materiais simples em arte.',
-      conteudo: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in dui mauris. Vivamus hendrerit arcu sed erat molestie vehicula. Sed auctor neque eu tellus rhoncus ut eleifend nibh porttitor.',
-      imagem: 'https://images.unsplash.com/photo-1529066792305-5e4efa40fde9',
-      data: '2023-07-01',
-      autor: 'Marcelo Rocha',
-      categorias: ['Exposição', 'Fotografia']
+  const [noticias, setNoticias] = useState<Noticia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const [termoBusca, setTermoBusca] = useState('');
+  const [categoriaFiltro, setCategoriaFiltro] = useState('');
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+
+  // Carregar notícias da API
+  useEffect(() => {
+    carregarNoticias();
+  }, [paginaAtual, categoriaFiltro]);
+
+  const carregarNoticias = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.append('pagina', paginaAtual.toString());
+      params.append('limite', '6');
+      
+      if (categoriaFiltro) {
+        params.append('categoria', categoriaFiltro);
+      }
+      
+      if (termoBusca) {
+        params.append('busca', termoBusca);
+      }
+
+      const response = await axios.get(`/api/noticias?${params.toString()}`);
+      
+      if (response.data.success) {
+        setNoticias(response.data.noticias);
+        setTotalPaginas(response.data.paginacao.paginas);
+      } else {
+        setErro('Erro ao carregar notícias');
+        // Usar dados de exemplo em caso de erro
+        setNoticias(noticiasExemplo);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar notícias:', error);
+      setErro('Erro ao carregar notícias');
+      setNoticias(noticiasExemplo);
+    } finally {
+      setLoading(false);
     }
-  ];
-  
+  };
+
+  const realizarBusca = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaginaAtual(1);
+    carregarNoticias();
+  };
+
+  const limparFiltros = () => {
+    setTermoBusca('');
+    setCategoriaFiltro('');
+    setPaginaAtual(1);
+  };
+
   // Todas as categorias únicas
-  const categoriasArray = blogPosts.flatMap(post => post.categorias);
-  const todasCategorias = Array.from(new Set(categoriasArray));
+  const todasCategorias = Array.from(new Set(noticias.flatMap(noticia => noticia.categorias)));
   
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-amber-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando notícias...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Header do blog */}
@@ -94,76 +110,125 @@ export default function BlogPage() {
         <div className="lg:flex lg:gap-12">
           {/* Posts do Blog */}
           <div className="lg:w-2/3">
-            <h2 className="text-2xl font-bold mb-8 text-gray-800">Publicações Recentes</h2>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-800">Publicações Recentes</h2>
+              {(termoBusca || categoriaFiltro) && (
+                <button
+                  onClick={limparFiltros}
+                  className="text-amber-600 hover:text-amber-800 font-medium"
+                >
+                  Limpar Filtros
+                </button>
+              )}
+            </div>
+
+            {/* Mensagem de erro */}
+            {erro && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                {erro}
+              </div>
+            )}
             
             {/* Lista de posts */}
-            <div className="space-y-10">
-              {blogPosts.map((post) => (
-                <article key={post.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <div className="md:flex">
-                    <div className="md:flex-shrink-0 md:w-64">
-                      <img
-                        src={post.imagem}
-                        alt={post.titulo}
-                        className="h-48 w-full object-cover md:h-full"
-                      />
-                    </div>
-                    <div className="p-6">
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {post.categorias.map((categoria) => (
-                          <span key={categoria} className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">
-                            {categoria}
-                          </span>
-                        ))}
+            {noticias.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-gray-500 text-lg mb-4">
+                  Nenhuma notícia encontrada.
+                </div>
+                <button
+                  onClick={limparFiltros}
+                  className="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+                >
+                  Ver Todas as Notícias
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-10">
+                {noticias.map((noticia) => (
+                  <article key={noticia._id} className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="md:flex">
+                      <div className="md:flex-shrink-0 md:w-64">
+                        <img
+                          src={noticia.imagem}
+                          alt={noticia.titulo}
+                          className="h-48 w-full object-cover md:h-full"
+                        />
                       </div>
-                      <Link href={`/blog/${post.slug}`}>
-                        <h3 className="text-xl font-semibold mb-2 text-gray-900 hover:text-amber-700 transition-colors">
-                          {post.titulo}
-                        </h3>
-                      </Link>
-                      <p className="text-gray-600 mb-4">{post.resumo}</p>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <span>{post.autor}</span>
-                        <span className="mx-2">•</span>
-                        <time dateTime={post.data}>
-                          {new Date(post.data).toLocaleDateString('pt-BR', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </time>
-                      </div>
-                      <div className="mt-4">
-                        <Link href={`/blog/${post.slug}`} className="text-amber-600 hover:text-amber-800 font-medium">
-                          Ler artigo completo →
+                      <div className="p-6">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {noticia.categorias.map((categoria) => (
+                            <span key={categoria} className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">
+                              {categoria}
+                            </span>
+                          ))}
+                        </div>
+                        <Link href={`/blog/${noticia.slug}`}>
+                          <h3 className="text-xl font-semibold mb-2 text-gray-900 hover:text-amber-700 transition-colors">
+                            {noticia.titulo}
+                          </h3>
                         </Link>
+                        <p className="text-gray-600 mb-4">{noticia.resumo}</p>
+                        <div className="flex items-center text-sm text-gray-500 mb-4">
+                          <span>{noticia.autor}</span>
+                          <span className="mx-2">•</span>
+                          <time dateTime={noticia.dataPublicacao}>
+                            {new Date(noticia.dataPublicacao).toLocaleDateString('pt-BR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </time>
+                          <span className="mx-2">•</span>
+                          <span>{noticia.visualizacoes} visualizações</span>
+                        </div>
+                        <div className="mt-4">
+                          <Link href={`/blog/${noticia.slug}`} className="text-amber-600 hover:text-amber-800 font-medium">
+                            Ler artigo completo →
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            )}
             
             {/* Paginação */}
-            <div className="mt-10 flex justify-center">
-              <nav className="flex items-center space-x-2">
-                <a href="#" className="px-4 py-2 text-gray-500 bg-white rounded-md border">
-                  Anterior
-                </a>
-                <a href="#" className="px-4 py-2 text-white bg-amber-600 rounded-md">
-                  1
-                </a>
-                <a href="#" className="px-4 py-2 text-gray-700 bg-white rounded-md border">
-                  2
-                </a>
-                <a href="#" className="px-4 py-2 text-gray-700 bg-white rounded-md border">
-                  3
-                </a>
-                <a href="#" className="px-4 py-2 text-gray-500 bg-white rounded-md border">
-                  Próxima
-                </a>
-              </nav>
-            </div>
+            {totalPaginas > 1 && (
+              <div className="mt-10 flex justify-center">
+                <nav className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setPaginaAtual(Math.max(1, paginaAtual - 1))}
+                    disabled={paginaAtual === 1}
+                    className="px-4 py-2 text-gray-500 bg-white rounded-md border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Anterior
+                  </button>
+                  
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(pagina => (
+                    <button
+                      key={pagina}
+                      onClick={() => setPaginaAtual(pagina)}
+                      className={`px-4 py-2 rounded-md ${
+                        pagina === paginaAtual
+                          ? 'text-white bg-amber-600'
+                          : 'text-gray-700 bg-white border hover:bg-gray-50'
+                      }`}
+                    >
+                      {pagina}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => setPaginaAtual(Math.min(totalPaginas, paginaAtual + 1))}
+                    disabled={paginaAtual === totalPaginas}
+                    className="px-4 py-2 text-gray-500 bg-white rounded-md border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Próxima
+                  </button>
+                </nav>
+              </div>
+            )}
           </div>
           
           {/* Sidebar */}
@@ -171,10 +236,12 @@ export default function BlogPage() {
             {/* Busca */}
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
               <h3 className="text-lg font-semibold mb-4">Buscar no Blog</h3>
-              <form className="flex">
+              <form onSubmit={realizarBusca} className="flex">
                 <input
                   type="text"
                   placeholder="Buscar artigos..."
+                  value={termoBusca}
+                  onChange={(e) => setTermoBusca(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-l-md flex-1 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                 />
                 <button
@@ -190,68 +257,94 @@ export default function BlogPage() {
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
               <h3 className="text-lg font-semibold mb-4">Categorias</h3>
               <ul className="space-y-2">
+                <li>
+                  <button
+                    onClick={() => {
+                      setCategoriaFiltro('');
+                      setPaginaAtual(1);
+                    }}
+                    className={`text-gray-700 hover:text-amber-600 transition-colors flex items-center w-full text-left ${
+                      !categoriaFiltro ? 'text-amber-600 font-medium' : ''
+                    }`}
+                  >
+                    <span className="mr-2">•</span>
+                    Todas as Categorias
+                  </button>
+                </li>
                 {todasCategorias.map((categoria) => (
                   <li key={categoria}>
-                    <Link href={`/blog/categoria/${categoria.toLowerCase()}`} className="text-gray-700 hover:text-amber-600 transition-colors flex items-center">
+                    <button
+                      onClick={() => {
+                        setCategoriaFiltro(categoria);
+                        setPaginaAtual(1);
+                      }}
+                      className={`text-gray-700 hover:text-amber-600 transition-colors flex items-center w-full text-left ${
+                        categoriaFiltro === categoria ? 'text-amber-600 font-medium' : ''
+                      }`}
+                    >
                       <span className="mr-2">•</span>
                       {categoria}
-                    </Link>
+                    </button>
                   </li>
                 ))}
               </ul>
             </div>
             
             {/* Inscrição Newsletter */}
-            <div className="bg-amber-50 p-6 rounded-lg shadow-md mb-6 border border-amber-100">
-              <h3 className="text-lg font-semibold mb-2">Receba Nossas Novidades</h3>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
               <p className="text-gray-600 mb-4">
-                Inscreva-se para receber as últimas notícias, eventos e conteúdo exclusivo.
+                Receba as últimas notícias sobre artesanato brasileiro diretamente no seu e-mail.
               </p>
-              <form>
+              <form className="space-y-3">
                 <input
                   type="email"
-                  placeholder="Seu email"
-                  className="px-4 py-2 border border-gray-300 rounded-md w-full mb-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                  required
+                  placeholder="Seu e-mail"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                 />
                 <button
                   type="submit"
-                  className="w-full bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md transition-colors"
+                  className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2 px-4 rounded-md transition-colors"
                 >
                   Inscrever-se
                 </button>
               </form>
-            </div>
-            
-            {/* Eventos Próximos */}
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-lg font-semibold mb-4">Próximos Eventos</h3>
-              <div className="space-y-4">
-                <div className="border-l-4 border-amber-500 pl-4">
-                  <h4 className="font-medium">Feira de Primavera</h4>
-                  <p className="text-sm text-gray-600">15 de Setembro, 2023</p>
-                  <p className="text-sm text-gray-600">Centro Cultural São Paulo</p>
-                </div>
-                <div className="border-l-4 border-amber-500 pl-4">
-                  <h4 className="font-medium">Workshop de Macramê</h4>
-                  <p className="text-sm text-gray-600">28 de Setembro, 2023</p>
-                  <p className="text-sm text-gray-600">Sala de Oficinas - 2º andar</p>
-                </div>
-                <div className="border-l-4 border-amber-500 pl-4">
-                  <h4 className="font-medium">Exposição "Mãos que Criam"</h4>
-                  <p className="text-sm text-gray-600">10-30 de Outubro, 2023</p>
-                  <p className="text-sm text-gray-600">Galeria Central</p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <a href="/eventos" className="text-amber-600 hover:text-amber-800 font-medium">
-                  Ver todos os eventos →
-                </a>
-              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}
+
+// Dados de exemplo (fallback)
+const noticiasExemplo: Noticia[] = [
+  {
+    _id: '1',
+    titulo: 'Feira de Artesanato de Primavera: Conheça os Destaques',
+    slug: 'feira-artesanato-primavera',
+    resumo: 'A Feira de Artesanato de Primavera traz o melhor do artesanato nacional com foco em peças que celebram a estação das flores.',
+    conteudo: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    imagem: 'https://images.unsplash.com/photo-1555639594-48ba11f2c095',
+    autor: 'Maria Oliveira',
+    categorias: ['Eventos', 'Feira'],
+    publicado: true,
+    dataPublicacao: '2023-09-05',
+    visualizacoes: 150,
+    tags: ['feira', 'primavera', 'artesanato']
+  },
+  {
+    _id: '2',
+    titulo: 'Workshop de Cerâmica Tradicional com Mestre Artesão',
+    slug: 'workshop-ceramica-tradicional',
+    resumo: 'Aprenda técnicas ancestrais de cerâmica com o renomado mestre artesão José da Silva em um workshop exclusivo.',
+    conteudo: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+    imagem: 'https://images.unsplash.com/photo-1565193566173-7a0af771d71a',
+    autor: 'Carlos Santos',
+    categorias: ['Workshop', 'Cerâmica'],
+    publicado: true,
+    dataPublicacao: '2023-08-20',
+    visualizacoes: 89,
+    tags: ['workshop', 'ceramica', 'tradicional']
+  }
+]; 

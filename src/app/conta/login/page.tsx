@@ -54,14 +54,9 @@ export default function LoginPage() {
       const result = await login(formData.email, formData.senha, formData.lembrar);
       
       if (result.success) {
-        // Login bem-sucedido - aguardar um pouco e redirecionar
-        setTimeout(() => {
-          if (redirectPath) {
-            router.push(redirectPath);
-          } else {
-            router.push('/');
-          }
-        }, 100);
+        // Login bem-sucedido - não redirecionar aqui, deixar o useEffect fazer isso
+        // O useEffect já tem a lógica correta para redirecionar admin para dashboard
+        console.log('Login realizado com sucesso, aguardando redirecionamento automático...');
       } else {
         setError(result.message || 'Falha no login. Verifique suas credenciais.');
         setLoading(false);

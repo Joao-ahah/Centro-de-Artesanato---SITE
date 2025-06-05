@@ -1,43 +1,49 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import axios from 'axios';
+
+interface Artesao {
+  _id: string;
+  nome: string;
+  especialidade: string;
+  descricao: string;
+  imagem?: string;
+  estado: string;
+  cidade: string;
+  ativo: boolean;
+}
 
 export default function SobrePage() {
-  // Dados de exemplo para artesãos em destaque
-  const artesaosDestaque = [
-    {
-      id: 1,
-      nome: 'Maria Silva',
-      especialidade: 'Cerâmica Artesanal',
-      descricao: 'Com mais de 20 anos de experiência, Maria cria peças únicas de cerâmica inspiradas na cultura nordestina.',
-      imagem: 'https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=300&h=300&fit=crop',
-      estado: 'Pernambuco'
-    },
-    {
-      id: 2,
-      nome: 'João Santos',
-      especialidade: 'Tecelagem Manual',
-      descricao: 'João aprendeu a tecer com sua avó e hoje mantém viva a tradição da tecelagem manual em teares tradicionais.',
-      imagem: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=300&h=300&fit=crop',
-      estado: 'Minas Gerais'
-    },
-    {
-      id: 3,
-      nome: 'Ana Costa',
-      especialidade: 'Esculturas em Madeira',
-      descricao: 'Utilizando técnicas ancestrais, Ana transforma madeiras nativas em esculturas que contam histórias brasileiras.',
-      imagem: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&h=300&fit=crop',
-      estado: 'Amazonas'
-    },
-    {
-      id: 4,
-      nome: 'Pedro Oliveira',
-      especialidade: 'Couro Trançado',
-      descricao: 'Pedro é reconhecido por suas técnicas de trançado em couro, criando peças utilitárias e decorativas de alta qualidade.',
-      imagem: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop',
-      estado: 'Rio Grande do Sul'
+  const [artesaosDestaque, setArtesaosDestaque] = useState<Artesao[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Carregar artesãos da API
+  useEffect(() => {
+    carregarArtesaos();
+  }, []);
+
+  const carregarArtesaos = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('/api/admin/artesaos?limit=4');
+      
+      if (response.data.success) {
+        setArtesaosDestaque(response.data.artesaos);
+      } else {
+        // Usar dados de exemplo em caso de erro
+        setArtesaosDestaque(artesaosExemplo);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar artesãos:', error);
+      setArtesaosDestaque(artesaosExemplo);
+    } finally {
+      setLoading(false);
     }
-  ];
-  
+  };
+
   // Dados da equipe
   const equipe = [
     {
@@ -178,86 +184,161 @@ export default function SobrePage() {
             únicas e histórias inspiradoras que se refletem em seus trabalhos excepcionais.
           </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {artesaosDestaque.map((artesao) => (
-              <div key={artesao.id} className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105">
-                <div className="relative h-64">
-                  <img
-                    src={artesao.imagem}
-                    alt={artesao.nome}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-0 left-0 bg-amber-600 text-white px-3 py-1 text-sm">
-                    {artesao.estado}
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-amber-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Carregando artesãos...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {artesaosDestaque.map((artesao) => (
+                <div key={artesao._id} className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:scale-105">
+                  <div className="relative h-64">
+                    <img
+                      src={artesao.imagem || `https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=300&h=300&fit=crop&seed=${artesao._id}`}
+                      alt={artesao.nome}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 bg-amber-600 text-white px-3 py-1 text-sm">
+                      {artesao.estado}
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold mb-1 text-gray-800">{artesao.nome}</h3>
+                    <p className="text-amber-600 font-medium mb-3">{artesao.especialidade}</p>
+                    <p className="text-gray-600 mb-4">{artesao.descricao}</p>
+                    <Link href={`/artesaos/${artesao._id}`} className="text-amber-700 hover:text-amber-900 font-medium">
+                      Ver perfil completo →
+                    </Link>
                   </div>
                 </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold mb-1 text-gray-800">{artesao.nome}</h3>
-                  <p className="text-amber-600 font-medium mb-3">{artesao.especialidade}</p>
-                  <p className="text-gray-600 mb-4">{artesao.descricao}</p>
-                  <Link href={`/artesaos/${artesao.id}`} className="text-amber-700 hover:text-amber-900 font-medium">
-                    Ver perfil completo →
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           
-          <div className="text-center mt-10">
-            <Link href="/artesaos" className="inline-block bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-md transition-colors">
-              Conheça todos os nossos artesãos
+          <div className="text-center mt-12">
+            <Link href="/artesaos" className="bg-amber-600 hover:bg-amber-700 text-white py-3 px-8 rounded-lg transition-colors inline-block">
+              Conhecer Todos os Artesãos
             </Link>
           </div>
         </div>
       </section>
       
       {/* Nossa Equipe */}
-      <section className="py-16 bg-amber-50">
+      <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-6 text-center text-amber-900">Nossa Equipe</h2>
           <p className="text-gray-700 mb-12 text-center max-w-3xl mx-auto">
-            Conheça as pessoas apaixonadas por artesanato que trabalham todos os dias para valorizar 
-            e promover a arte manual brasileira.
+            Conheça as pessoas dedicadas que trabalham todos os dias para promover e valorizar o artesanato brasileiro.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             {equipe.map((membro, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden text-center">
-                <div className="h-64 relative">
+              <div key={index} className="text-center">
+                <div className="relative w-48 h-48 mx-auto mb-6">
                   <img
                     src={membro.imagem}
                     alt={membro.nome}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover rounded-full shadow-lg"
                   />
                 </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold mb-1 text-gray-800">{membro.nome}</h3>
-                  <p className="text-amber-600">{membro.cargo}</p>
-                </div>
+                <h3 className="text-xl font-semibold mb-2 text-gray-800">{membro.nome}</h3>
+                <p className="text-amber-600 font-medium">{membro.cargo}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
       
+      {/* Estatísticas */}
+      <section className="py-16 bg-amber-800 text-white">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold mb-12 text-center">Nosso Impacto</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-2">150+</div>
+              <div className="text-amber-100">Artesãos Parceiros</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-2">500+</div>
+              <div className="text-amber-100">Produtos Únicos</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-2">25</div>
+              <div className="text-amber-100">Estados Representados</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-2">10k+</div>
+              <div className="text-amber-100">Clientes Satisfeitos</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
       {/* Call to Action */}
-      <section className="py-16 bg-amber-700 text-white">
+      <section className="py-16 bg-gray-100">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Junte-se a Nós</h2>
-          <p className="text-xl mb-8 max-w-3xl mx-auto">
-            Seja como artesão, parceiro ou apoiador, você pode fazer parte dessa 
-            jornada de valorização do artesanato brasileiro.
+          <h2 className="text-3xl font-bold mb-6 text-amber-900">Faça Parte da Nossa História</h2>
+          <p className="text-gray-700 mb-8 max-w-2xl mx-auto">
+            Seja você um artesão talentoso ou alguém que valoriza produtos autênticos e únicos, 
+            convidamos você a fazer parte da nossa comunidade.
           </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link href="/contato" className="bg-white text-amber-700 hover:bg-gray-100 px-6 py-3 rounded-md font-semibold transition-colors">
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/contato" className="bg-amber-600 hover:bg-amber-700 text-white py-3 px-8 rounded-lg transition-colors">
               Entre em Contato
             </Link>
-            <Link href="/artesaos/cadastro" className="bg-amber-900 hover:bg-amber-950 text-white px-6 py-3 rounded-md font-semibold transition-colors">
-              Cadastre-se como Artesão
+            <Link href="/produtos" className="bg-white hover:bg-gray-50 text-amber-600 border-2 border-amber-600 py-3 px-8 rounded-lg transition-colors">
+              Explore Nossos Produtos
             </Link>
           </div>
         </div>
       </section>
     </div>
   );
-} 
+}
+
+// Dados de exemplo (fallback)
+const artesaosExemplo: Artesao[] = [
+  {
+    _id: '1',
+    nome: 'Maria Silva',
+    especialidade: 'Cerâmica Artesanal',
+    descricao: 'Com mais de 20 anos de experiência, Maria cria peças únicas de cerâmica inspiradas na cultura nordestina.',
+    imagem: 'https://images.unsplash.com/photo-1566616213894-2d4e1baee5d8?w=300&h=300&fit=crop',
+    estado: 'Pernambuco',
+    cidade: 'Recife',
+    ativo: true
+  },
+  {
+    _id: '2',
+    nome: 'João Santos',
+    especialidade: 'Tecelagem Manual',
+    descricao: 'João aprendeu a tecer com sua avó e hoje mantém viva a tradição da tecelagem manual em teares tradicionais.',
+    imagem: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=300&h=300&fit=crop',
+    estado: 'Minas Gerais',
+    cidade: 'Belo Horizonte',
+    ativo: true
+  },
+  {
+    _id: '3',
+    nome: 'Ana Costa',
+    especialidade: 'Esculturas em Madeira',
+    descricao: 'Utilizando técnicas ancestrais, Ana transforma madeiras nativas em esculturas que contam histórias brasileiras.',
+    imagem: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&h=300&fit=crop',
+    estado: 'Amazonas',
+    cidade: 'Manaus',
+    ativo: true
+  },
+  {
+    _id: '4',
+    nome: 'Pedro Oliveira',
+    especialidade: 'Couro Trançado',
+    descricao: 'Pedro é reconhecido por suas técnicas de trançado em couro, criando peças utilitárias e decorativas de alta qualidade.',
+    imagem: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop',
+    estado: 'Rio Grande do Sul',
+    cidade: 'Porto Alegre',
+    ativo: true
+  }
+]; 

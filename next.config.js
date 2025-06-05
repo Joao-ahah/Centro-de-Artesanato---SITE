@@ -10,6 +10,11 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    // Configuração para resolver problemas com nodemailer
+    config.externals.push('nodemailer');
+    return config;
+  },
 };
 
 module.exports = nextConfig; 

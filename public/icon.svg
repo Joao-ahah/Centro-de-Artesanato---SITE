@@ -1,0 +1,48 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fundo circular com gradiente -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#D97706;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="vase-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FEF3C7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FDE68A;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fundo circular -->
+  <circle cx="16" cy="16" r="16" fill="url(#bg-gradient)"/>
+  
+  <!-- Sombra do vaso -->
+  <ellipse cx="16.5" cy="22.5" rx="4" ry="1" fill="#92400E" opacity="0.3"/>
+  
+  <!-- Vaso de cerâmica principal -->
+  <path d="M11 10C11 9.44772 11.4477 9 12 9H20C20.5523 9 21 9.44772 21 10V11C21 11.5523 20.5523 12 20 12H19.5V20C19.5 21.1046 18.6046 22 17.5 22H14.5C13.3954 22 12.5 21.1046 12.5 20V12H12C11.4477 12 11 11.5523 11 11V10Z" fill="url(#vase-gradient)" stroke="#F59E0B" stroke-width="0.5"/>
+  
+  <!-- Borda superior do vaso -->
+  <rect x="11" y="9" width="10" height="2" rx="1" fill="#F59E0B"/>
+  
+  <!-- Padrões decorativos no vaso -->
+  <path d="M13 14 Q16 15 19 14" stroke="#F59E0B" stroke-width="1" fill="none"/>
+  <path d="M13.5 17 Q16 18 18.5 17" stroke="#F59E0B" stroke-width="1" fill="none"/>
+  
+  <!-- Pequenos círculos decorativos -->
+  <circle cx="14" cy="19" r="0.8" fill="#F59E0B"/>
+  <circle cx="18" cy="19" r="0.8" fill="#F59E0B"/>
+  <circle cx="16" cy="15.5" r="0.6" fill="#F59E0B"/>
+  
+  <!-- Plantas/folhas saindo do vaso -->
+  <path d="M16 9 Q14 6 11 7 Q9 8 10 10 Q12 9 14 8.5 Q15 8.2 16 9Z" fill="#16A34A"/>
+  <path d="M16 9 Q18 6 21 7 Q23 8 22 10 Q20 9 18 8.5 Q17 8.2 16 9Z" fill="#16A34A"/>
+  
+  <!-- Detalhes das folhas -->
+  <path d="M12 7.5 Q13 8 13.5 8.5" stroke="#15803D" stroke-width="0.5" fill="none"/>
+  <path d="M20 7.5 Q19 8 18.5 8.5" stroke="#15803D" stroke-width="0.5" fill="none"/>
+  
+  <!-- Pequenas flores -->
+  <circle cx="13" cy="7" r="1" fill="#EF4444"/>
+  <circle cx="19" cy="7" r="1" fill="#EF4444"/>
+  <circle cx="13" cy="7" r="0.4" fill="#FEF2F2"/>
+  <circle cx="19" cy="7" r="0.4" fill="#FEF2F2"/>
+</svg> 

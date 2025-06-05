@@ -129,6 +129,12 @@ export function useAuth() {
         setLoading(false);
         
         console.log('Login bem-sucedido. Usuário:', data.usuario);
+        
+        // Forçar recarregamento da página para garantir que o estado seja atualizado corretamente
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+        
         return { success: true };
       } else {
         console.log('Login falhou:', data.message);
