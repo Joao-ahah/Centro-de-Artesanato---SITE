@@ -7,6 +7,8 @@ import { toast } from 'react-hot-toast';
 import { FaArrowLeft, FaShoppingCart, FaStore, FaTruck } from 'react-icons/fa';
 import { useCarrinho } from '@/contexts/CarrinhoContext';
 import { formatarMoeda } from '@/utils/formatters';
+import BotaoPagamento from '@/components/BotaoPagamento';
+import { PagamentoItem, DadosPagador } from '@/hooks/useMercadoPago';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -31,12 +33,12 @@ export default function CheckoutPage() {
   const [cidade, setCidade] = useState('');
   const [estado, setEstado] = useState('');
   const [metodoEntrega, setMetodoEntrega] = useState('entrega');
-  const [metodoPagamento, setMetodoPagamento] = useState('pix');
   const [observacoes, setObservacoes] = useState('');
   const [concordaTermos, setConcordaTermos] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [cepPesquisando, setCepPesquisando] = useState(false);
+  const [etapa, setEtapa] = useState<'dados' | 'pagamento'>('dados');
 
   useEffect(() => {
     // Redirecionar para o carrinho se estiver vazio
@@ -48,6 +50,8 @@ export default function CheckoutPage() {
 
   // Calcular frete de acordo com o método de entrega
   const valorFrete = metodoEntrega === 'retirada' ? 0 : frete;
+  const valorEmbrulho = embrulhoPresente ? 10 : 0;
+  const totalFinal = subtotal + valorFrete + valorEmbrulho;
 
   // Buscar endereço pelo CEP
   const buscarCep = async () => {
@@ -100,72 +104,99 @@ export default function CheckoutPage() {
     return true;
   };
 
-  // Função para finalizar a compra
-  const finalizarCompra = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // Prosseguir para pagamento
+  const prosseguirParaPagamento = () => {
     if (!validarFormulario()) return;
+    setEtapa('pagamento');
+  };
 
-    setIsLoading(true);
-    try {
-      // Preparar dados do pedido
-      const pedidoData = {
-        nomeCliente: nome,
-        emailCliente: email,
-        telefone: telefone,
-        metodoEntrega: metodoEntrega,
-        endereco: metodoEntrega === 'entrega' ? {
-          cep,
-          logradouro: endereco,
-          numero,
-          complemento,
-          bairro,
-          cidade,
-          estado
-        } : undefined,
-        items: itens.map(item => ({
-          produtoId: item.produtoId,
-          nomeProduto: item.nome,
-          quantidade: item.quantidade,
-          precoUnitario: item.preco,
-          subtotal: item.preco * item.quantidade,
-          imagem: item.imagem
-        })),
-        valorFrete: valorFrete,
-        valorTotal: total,
-        valorProdutos: subtotal,
-        embrulhoPresente,
-        observacoes,
-        metodoPagamento
-      };
+  // Preparar dados para o Mercado Pago
+  const prepararDadosPagamento = (): { items: PagamentoItem[], payer: DadosPagador, external_reference: string } => {
+    // Preparar itens para o Mercado Pago
+    const items: PagamentoItem[] = [
+      // Produtos
+      ...itens.map(item => ({
+        id: item.produtoId,
+        title: item.nome,
+        description: `Produto artesanal - Qtd: ${item.quantidade}`,
+        unit_price: item.preco,
+        quantity: item.quantidade
+      })),
+      // Frete (se houver)
+      ...(valorFrete > 0 ? [{
+        id: 'frete',
+        title: 'Frete',
+        description: 'Taxa de entrega',
+        unit_price: valorFrete,
+        quantity: 1
+      }] : []),
+      // Embrulho (se houver)
+      ...(valorEmbrulho > 0 ? [{
+        id: 'embrulho',
+        title: 'Embrulho para Presente',
+        description: 'Embrulho especial para presente',
+        unit_price: valorEmbrulho,
+        quantity: 1
+      }] : [])
+    ];
 
-      // Enviar pedido para API
-      const response = await fetch('/api/pedidos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(pedidoData)
-      });
+    // Preparar dados do pagador
+    const payer: DadosPagador = {
+      name: nome.split(' ')[0],
+      surname: nome.split(' ').slice(1).join(' '),
+      email: email,
+      phone: telefone ? {
+        area_code: telefone.substring(0, 2),
+        number: telefone.substring(2)
+      } : undefined,
+      address: metodoEntrega === 'entrega' ? {
+        street_name: endereco,
+        street_number: parseInt(numero),
+        zip_code: cep
+      } : undefined
+    };
 
-      const data = await response.json();
+    // Referência externa
+    const external_reference = `pedido_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-      if (data.success) {
-        // Limpar carrinho
-        limparCarrinho();
-        
-        // Redirecionar para página de confirmação
-        router.push(`/conta/pedidos/${data.pedido._id}`);
-        toast.success('Pedido realizado com sucesso!');
-      } else {
-        throw new Error(data.message || 'Erro ao finalizar o pedido');
+    return { items, payer, external_reference };
+  };
+
+  // Callback de sucesso do pagamento
+  const onPagamentoSucesso = (preferenceData: any) => {
+    console.log('Pagamento iniciado com sucesso:', preferenceData);
+    
+    // Salvar dados do pedido no localStorage para recuperar depois
+    const dadosPedido = {
+      cliente: { nome, email, telefone },
+      endereco: metodoEntrega === 'entrega' ? {
+        cep, endereco, numero, complemento, bairro, cidade, estado
+      } : null,
+      metodoEntrega,
+      observacoes,
+      items: itens,
+      valores: {
+        subtotal,
+        frete: valorFrete,
+        embrulho: valorEmbrulho,
+        total: totalFinal
+      },
+      mercadopago: {
+        preference_id: preferenceData.id,
+        external_reference: preferenceData.external_reference
       }
-    } catch (error) {
-      console.error('Erro ao finalizar compra:', error);
-      toast.error('Ocorreu um erro ao finalizar seu pedido. Por favor, tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    
+    localStorage.setItem('pedido_pendente', JSON.stringify(dadosPedido));
+    
+    // O usuário será redirecionado para o Mercado Pago automaticamente
+    toast.success('Redirecionando para pagamento...');
+  };
+
+  // Callback de erro do pagamento
+  const onPagamentoErro = (error: string) => {
+    console.error('Erro no pagamento:', error);
+    toast.error(`Erro ao processar pagamento: ${error}`);
   };
 
   return (
@@ -176,67 +207,90 @@ export default function CheckoutPage() {
         <Link href="/carrinho" className="inline-flex items-center text-amber-600 hover:text-amber-800 mb-6">
           <FaArrowLeft className="mr-2" /> Voltar ao carrinho
         </Link>
+
+        {/* Indicador de etapas */}
+        <div className="flex items-center justify-center mb-8">
+          <div className="flex items-center">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${etapa === 'dados' ? 'bg-amber-600 text-white' : 'bg-amber-200 text-amber-800'}`}>
+              1
+            </div>
+            <span className={`ml-2 font-medium ${etapa === 'dados' ? 'text-amber-600' : 'text-gray-500'}`}>
+              Dados da Entrega
+            </span>
+          </div>
+          
+          <div className="mx-4 w-12 h-px bg-gray-300"></div>
+          
+          <div className="flex items-center">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${etapa === 'pagamento' ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+              2
+            </div>
+            <span className={`ml-2 font-medium ${etapa === 'pagamento' ? 'text-amber-600' : 'text-gray-500'}`}>
+              Pagamento
+            </span>
+          </div>
+        </div>
         
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Formulário de checkout */}
           <div className="lg:w-2/3">
-            <form onSubmit={finalizarCompra}>
-              {/* Dados pessoais */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                <div className="p-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-amber-900">Dados Pessoais</h2>
-                </div>
-                
-                <div className="p-4 space-y-4">
-                  <div>
-                    <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">Nome completo</label>
-                    <input
-                      type="text"
-                      id="nome"
-                      value={nome}
-                      onChange={(e) => setNome(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      required
-                    />
+            {etapa === 'dados' && (
+              <form onSubmit={(e) => { e.preventDefault(); prosseguirParaPagamento(); }}>
+                {/* Dados pessoais */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                  <div className="p-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-amber-900">Dados Pessoais</h2>
                   </div>
                   
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-                    <input
-                      type="email"
-                      id="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      required
-                    />
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">Nome completo *</label>
+                      <input
+                        type="text"
+                        id="nome"
+                        value={nome}
+                        onChange={(e) => setNome(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                      <input
+                        type="email"
+                        id="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="telefone" className="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
+                      <input
+                        type="tel"
+                        id="telefone"
+                        value={telefone}
+                        onChange={(e) => setTelefone(e.target.value)}
+                        placeholder="(11) 99999-9999"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        required
+                      />
+                    </div>
                   </div>
-                  
-                  <div>
-                    <label htmlFor="telefone" className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                    <input
-                      type="tel"
-                      id="telefone"
-                      value={telefone}
-                      onChange={(e) => setTelefone(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Método de entrega */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                <div className="p-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-amber-900">Método de Entrega</h2>
                 </div>
                 
-                <div className="p-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className={`flex-1 p-4 border rounded-lg cursor-pointer ${metodoEntrega === 'entrega' ? 'border-amber-500 bg-amber-50' : 'border-gray-300'}`}
-                      onClick={() => setMetodoEntrega('entrega')}>
-                      <div className="flex items-center">
+                {/* Método de entrega */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                  <div className="p-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-amber-900">Método de Entrega</h2>
+                  </div>
+                  
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center p-3 border border-gray-200 rounded-md">
                         <input
                           type="radio"
                           id="entrega"
@@ -244,21 +298,20 @@ export default function CheckoutPage() {
                           value="entrega"
                           checked={metodoEntrega === 'entrega'}
                           onChange={() => setMetodoEntrega('entrega')}
-                          className="mr-2 h-4 w-4 text-amber-600 focus:ring-amber-500"
+                          className="mr-3 h-4 w-4 text-amber-600 focus:ring-amber-500"
                         />
-                        <label htmlFor="entrega" className="flex items-center cursor-pointer">
-                          <FaTruck className="mr-2 text-amber-600" />
-                          <div>
-                            <p className="font-medium">Entrega em domicílio</p>
-                            <p className="text-sm text-gray-600">Receba em sua casa</p>
-                          </div>
-                        </label>
+                        <div className="flex-1">
+                          <label htmlFor="entrega" className="cursor-pointer font-medium flex items-center">
+                            <FaTruck className="mr-2 text-amber-600" />
+                            Entrega em domicílio
+                          </label>
+                          <p className="text-sm text-gray-600">
+                            Entrega em até 5 dias úteis - {formatarMoeda(valorFrete)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className={`flex-1 p-4 border rounded-lg cursor-pointer ${metodoEntrega === 'retirada' ? 'border-amber-500 bg-amber-50' : 'border-gray-300'}`}
-                      onClick={() => setMetodoEntrega('retirada')}>
-                      <div className="flex items-center">
+                      
+                      <div className="flex items-center p-3 border border-gray-200 rounded-md">
                         <input
                           type="radio"
                           id="retirada"
@@ -266,235 +319,243 @@ export default function CheckoutPage() {
                           value="retirada"
                           checked={metodoEntrega === 'retirada'}
                           onChange={() => setMetodoEntrega('retirada')}
-                          className="mr-2 h-4 w-4 text-amber-600 focus:ring-amber-500"
+                          className="mr-3 h-4 w-4 text-amber-600 focus:ring-amber-500"
                         />
-                        <label htmlFor="retirada" className="flex items-center cursor-pointer">
-                          <FaStore className="mr-2 text-amber-600" />
-                          <div>
-                            <p className="font-medium">Retirada na loja</p>
-                            <p className="text-sm text-gray-600">Sem custo de frete</p>
-                          </div>
-                        </label>
+                        <div className="flex-1">
+                          <label htmlFor="retirada" className="cursor-pointer font-medium flex items-center">
+                            <FaStore className="mr-2 text-amber-600" />
+                            Retirada na loja
+                          </label>
+                          <p className="text-sm text-gray-600">
+                            Grátis - Retire em nosso endereço
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  
-                  {metodoEntrega === 'retirada' && (
-                    <div className="mt-4 p-4 bg-amber-50 rounded-lg">
-                      <p className="text-sm text-gray-700">
-                        <strong>Local de retirada:</strong> Centro de Artesanato - Rua das Artes, 123, Centro.
-                      </p>
-                      <p className="text-sm text-gray-700 mt-1">
-                        <strong>Horário de funcionamento:</strong> Segunda a Sexta, das 9h às 18h. Sábados das 9h às 13h.
-                      </p>
-                      <p className="text-sm text-gray-700 mt-1">
-                        <strong>Tempo de separação:</strong> Após a confirmação do pagamento, seu pedido estará disponível para retirada em até 2 dias úteis.
-                      </p>
-                    </div>
-                  )}
                 </div>
-              </div>
-              
-              {/* Endereço de entrega (condicional) */}
-              {metodoEntrega === 'entrega' && (
-                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                  <div className="p-4 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-amber-900">Endereço de Entrega</h2>
-                  </div>
-                  
-                  <div className="p-4 space-y-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="sm:w-1/3">
-                        <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                        <div className="flex">
+                
+                {/* Endereço de entrega */}
+                {metodoEntrega === 'entrega' && (
+                  <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <div className="p-4 border-b border-gray-200">
+                      <h2 className="text-lg font-semibold text-amber-900">Endereço de Entrega</h2>
+                    </div>
+                    
+                    <div className="p-4 space-y-4">
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">CEP *</label>
                           <input
                             type="text"
                             id="cep"
                             value={cep}
-                            onChange={(e) => setCep(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                            className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            onChange={(e) => setCep(e.target.value.replace(/\D/g, ''))}
+                            maxLength={8}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                             required={metodoEntrega === 'entrega'}
-                            placeholder="00000000"
                           />
+                        </div>
+                        <div className="flex items-end">
                           <button
                             type="button"
                             onClick={buscarCep}
                             disabled={cepPesquisando || cep.length !== 8}
-                            className="bg-amber-600 text-white px-3 py-2 rounded-r-md hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-50"
+                            className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50"
                           >
-                            {cepPesquisando ? '...' : 'Buscar'}
+                            {cepPesquisando ? 'Buscando...' : 'Buscar'}
                           </button>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="endereco" className="block text-sm font-medium text-gray-700 mb-1">Logradouro</label>
-                      <input
-                        type="text"
-                        id="endereco"
-                        value={endereco}
-                        onChange={(e) => setEndereco(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        required={metodoEntrega === 'entrega'}
-                      />
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="sm:w-1/4">
-                        <label htmlFor="numero" className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                      
+                      <div>
+                        <label htmlFor="endereco" className="block text-sm font-medium text-gray-700 mb-1">Endereço *</label>
                         <input
                           type="text"
-                          id="numero"
-                          value={numero}
-                          onChange={(e) => setNumero(e.target.value)}
+                          id="endereco"
+                          value={endereco}
+                          onChange={(e) => setEndereco(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                           required={metodoEntrega === 'entrega'}
                         />
                       </div>
                       
-                      <div className="sm:w-3/4">
-                        <label htmlFor="complemento" className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
-                        <input
-                          type="text"
-                          id="complemento"
-                          value={complemento}
-                          onChange={(e) => setComplemento(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        />
+                      <div className="flex gap-4">
+                        <div className="w-1/3">
+                          <label htmlFor="numero" className="block text-sm font-medium text-gray-700 mb-1">Número *</label>
+                          <input
+                            type="text"
+                            id="numero"
+                            value={numero}
+                            onChange={(e) => setNumero(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            required={metodoEntrega === 'entrega'}
+                          />
+                        </div>
+                        
+                        <div className="flex-1">
+                          <label htmlFor="complemento" className="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+                          <input
+                            type="text"
+                            id="complemento"
+                            value={complemento}
+                            onChange={(e) => setComplemento(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="bairro" className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
-                      <input
-                        type="text"
-                        id="bairro"
-                        value={bairro}
-                        onChange={(e) => setBairro(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        required={metodoEntrega === 'entrega'}
-                      />
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="sm:w-3/4">
-                        <label htmlFor="cidade" className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                      
+                      <div>
+                        <label htmlFor="bairro" className="block text-sm font-medium text-gray-700 mb-1">Bairro *</label>
                         <input
                           type="text"
-                          id="cidade"
-                          value={cidade}
-                          onChange={(e) => setCidade(e.target.value)}
+                          id="bairro"
+                          value={bairro}
+                          onChange={(e) => setBairro(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                           required={metodoEntrega === 'entrega'}
                         />
                       </div>
                       
-                      <div className="sm:w-1/4">
-                        <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                        <input
-                          type="text"
-                          id="estado"
-                          value={estado}
-                          onChange={(e) => setEstado(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                          required={metodoEntrega === 'entrega'}
-                        />
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label htmlFor="cidade" className="block text-sm font-medium text-gray-700 mb-1">Cidade *</label>
+                          <input
+                            type="text"
+                            id="cidade"
+                            value={cidade}
+                            onChange={(e) => setCidade(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            required={metodoEntrega === 'entrega'}
+                          />
+                        </div>
+                        
+                        <div className="w-24">
+                          <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">UF *</label>
+                          <input
+                            type="text"
+                            id="estado"
+                            value={estado}
+                            onChange={(e) => setEstado(e.target.value.toUpperCase())}
+                            maxLength={2}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            required={metodoEntrega === 'entrega'}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-              
-              {/* Método de pagamento */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                <div className="p-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-amber-900">Método de Pagamento</h2>
+                )}
+                
+                {/* Observações */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                  <div className="p-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-amber-900">Observações</h2>
+                  </div>
+                  
+                  <div className="p-4">
+                    <textarea
+                      id="observacoes"
+                      value={observacoes}
+                      onChange={(e) => setObservacoes(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      rows={3}
+                      placeholder="Informações adicionais sobre seu pedido"
+                    ></textarea>
+                  </div>
                 </div>
                 
-                <div className="p-4 space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="pix"
-                        name="metodoPagamento"
-                        value="pix"
-                        checked={metodoPagamento === 'pix'}
-                        onChange={() => setMetodoPagamento('pix')}
-                        className="mr-2 h-4 w-4 text-amber-600 focus:ring-amber-500"
-                      />
-                      <label htmlFor="pix" className="cursor-pointer">PIX</label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="cartao"
-                        name="metodoPagamento"
-                        value="cartao"
-                        checked={metodoPagamento === 'cartao'}
-                        onChange={() => setMetodoPagamento('cartao')}
-                        className="mr-2 h-4 w-4 text-amber-600 focus:ring-amber-500"
-                      />
-                      <label htmlFor="cartao" className="cursor-pointer">Cartão de Crédito/Débito</label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="boleto"
-                        name="metodoPagamento"
-                        value="boleto"
-                        checked={metodoPagamento === 'boleto'}
-                        onChange={() => setMetodoPagamento('boleto')}
-                        className="mr-2 h-4 w-4 text-amber-600 focus:ring-amber-500"
-                      />
-                      <label htmlFor="boleto" className="cursor-pointer">Boleto Bancário</label>
+                {/* Termos e condições */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                  <div className="p-4">
+                    <div className="flex items-start">
+                      <div className="flex items-center h-5">
+                        <input
+                          type="checkbox"
+                          id="termos"
+                          checked={concordaTermos}
+                          onChange={() => setConcordaTermos(!concordaTermos)}
+                          className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                          required
+                        />
+                      </div>
+                      <label htmlFor="termos" className="ml-3 text-sm text-gray-700">
+                        Li e concordo com os <Link href="/termos" className="text-amber-600 hover:text-amber-800">termos e condições</Link> e <Link href="/privacidade" className="text-amber-600 hover:text-amber-800">política de privacidade</Link>. *
+                      </label>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Observações */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                <div className="p-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-amber-900">Observações</h2>
-                </div>
-                
-                <div className="p-4">
-                  <textarea
-                    id="observacoes"
-                    value={observacoes}
-                    onChange={(e) => setObservacoes(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    rows={3}
-                    placeholder="Informações adicionais sobre seu pedido"
-                  ></textarea>
-                </div>
-              </div>
-              
-              {/* Termos e condições */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-                <div className="p-4">
-                  <div className="flex items-start">
-                    <div className="flex items-center h-5">
-                      <input
-                        type="checkbox"
-                        id="termos"
-                        checked={concordaTermos}
-                        onChange={() => setConcordaTermos(!concordaTermos)}
-                        className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
-                        required
-                      />
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-amber-600 text-white py-3 px-4 rounded-md hover:bg-amber-700 transition-colors font-medium disabled:opacity-50"
+                >
+                  Prosseguir para Pagamento
+                </button>
+              </form>
+            )}
+
+            {etapa === 'pagamento' && (
+              <div className="space-y-6">
+                {/* Resumo dos dados */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <div className="p-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-amber-900">Resumo dos Dados</h2>
+                  </div>
+                  
+                  <div className="p-4 space-y-3">
+                    <div>
+                      <strong>Cliente:</strong> {nome} ({email})
                     </div>
-                    <label htmlFor="termos" className="ml-3 text-sm text-gray-700">
-                      Li e concordo com os <Link href="/termos" className="text-amber-600 hover:text-amber-800">termos e condições</Link> e <Link href="/privacidade" className="text-amber-600 hover:text-amber-800">política de privacidade</Link>.
-                    </label>
+                    <div>
+                      <strong>Telefone:</strong> {telefone}
+                    </div>
+                    <div>
+                      <strong>Entrega:</strong> {metodoEntrega === 'entrega' ? 'Entrega em domicílio' : 'Retirada na loja'}
+                    </div>
+                    {metodoEntrega === 'entrega' && (
+                      <div>
+                        <strong>Endereço:</strong> {endereco}, {numero} - {bairro}, {cidade}/{estado} - CEP: {cep}
+                      </div>
+                    )}
+                    {observacoes && (
+                      <div>
+                        <strong>Observações:</strong> {observacoes}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="p-4 border-t border-gray-200">
+                    <button
+                      onClick={() => setEtapa('dados')}
+                      className="text-amber-600 hover:text-amber-800 text-sm"
+                    >
+                      ← Editar dados
+                    </button>
+                  </div>
+                </div>
+
+                {/* Pagamento com Mercado Pago */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <div className="p-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-amber-900">💳 Pagamento</h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Processamento seguro via Mercado Pago
+                    </p>
+                  </div>
+                  
+                  <div className="p-4">
+                    <BotaoPagamento
+                      {...prepararDadosPagamento()}
+                      onSuccess={onPagamentoSucesso}
+                      onError={onPagamentoErro}
+                      className="shadow-lg"
+                    />
                   </div>
                 </div>
               </div>
-            </form>
+            )}
           </div>
           
           {/* Resumo do pedido */}
@@ -535,24 +596,23 @@ export default function CheckoutPage() {
                   {embrulhoPresente && (
                     <div className="flex justify-between">
                       <span>Embrulho para presente:</span>
-                      <span>R$ 10,00</span>
+                      <span>{formatarMoeda(valorEmbrulho)}</span>
                     </div>
                   )}
                   
                   <div className="flex justify-between font-semibold text-lg pt-2 border-t border-gray-200">
                     <span>Total:</span>
-                    <span className="text-amber-900">{formatarMoeda(total - (metodoEntrega === 'retirada' ? frete : 0))}</span>
+                    <span className="text-amber-900">{formatarMoeda(totalFinal)}</span>
                   </div>
                 </div>
-                
-                <button
-                  type="submit"
-                  onClick={finalizarCompra}
-                  disabled={isLoading}
-                  className="w-full bg-amber-600 text-white py-3 px-4 rounded-md hover:bg-amber-700 transition-colors font-medium mt-6 disabled:opacity-50"
-                >
-                  {isLoading ? 'Processando...' : 'Finalizar Compra'}
-                </button>
+
+                {etapa === 'dados' && (
+                  <div className="mt-6 p-3 bg-amber-50 rounded-lg">
+                    <p className="text-sm text-amber-800">
+                      ℹ️ Na próxima etapa você será redirecionado para o Mercado Pago para finalizar o pagamento com segurança.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

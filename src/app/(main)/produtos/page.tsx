@@ -399,7 +399,7 @@ export default function ProdutosPage() {
                 <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow h-full flex flex-col">
                   <div className="relative h-64 overflow-hidden">
                     <Image 
-                      src={produto.imagem || produto.imagens?.[0] || 'https://images.unsplash.com/photo-1565193566173-7a0af771d71a'}
+                      src={produto.imagens?.[0] || 'https://images.unsplash.com/photo-1565193566173-7a0af771d71a'}
                       alt={produto.nome}
                       fill
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

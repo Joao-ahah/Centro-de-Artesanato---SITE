@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import dbConnect from '@/lib/db';
 import PedidoModel from '@/models/pedido';
 

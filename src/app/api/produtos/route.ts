@@ -10,45 +10,111 @@ export const produtosSimulados = [
   {
     _id: '1',
     nome: 'Vaso de Cerâmica Artesanal',
-    descricao: 'Vaso feito à mão com técnicas tradicionais de cerâmica.',
+    descricao: 'Vaso feito à mão com técnicas tradicionais de cerâmica. Peça única com acabamento rústico e desenhos inspirados na cultura indígena brasileira.',
     preco: 120.00,
     precoPromocional: 90.00,
     categoria: 'Cerâmica',
     quantidade: 15,
     destaque: true,
+    ativo: true,
+    material: 'Cerâmica',
+    dimensoes: '25cm x 20cm',
+    peso: 800,
+    artesao: 'Maria Silva',
     imagens: [
       'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1604236349784-126db77a7339?w=800&h=600&fit=crop'
     ],
-    dataCriacao: new Date().toISOString()
+    dataCriacao: new Date().toISOString(),
+    avaliacao: 4.5,
+    totalAvaliacoes: 12,
+    tags: ['cerâmica', 'vaso', 'decoração', 'artesanal']
   },
   {
     _id: '2',
     nome: 'Bolsa de Macramê',
-    descricao: 'Bolsa artesanal feita com técnica de macramê e fios de algodão natural.',
+    descricao: 'Bolsa artesanal feita com técnica de macramê e fios de algodão natural. Ideal para o dia a dia com estilo sustentável.',
     preco: 85.00,
     categoria: 'Têxtil',
     quantidade: 8,
     destaque: true,
+    ativo: true,
+    material: 'Algodão natural',
+    dimensoes: '30cm x 25cm x 10cm',
+    peso: 200,
+    artesao: 'João Santos',
     imagens: [
       'https://images.unsplash.com/photo-1588187284031-3fcc97a9ccc9?w=800&h=600&fit=crop'
     ],
-    dataCriacao: new Date().toISOString()
+    dataCriacao: new Date().toISOString(),
+    avaliacao: 4.8,
+    totalAvaliacoes: 8,
+    tags: ['macramê', 'bolsa', 'têxtil', 'sustentável']
   },
   {
     _id: '3',
     nome: 'Conjunto de Tábuas de Madeira',
-    descricao: 'Conjunto com 3 tábuas de corte feitas em madeira de reflorestamento.',
+    descricao: 'Conjunto com 3 tábuas de corte feitas em madeira de reflorestamento. Diferentes tamanhos para todas as suas necessidades culinárias.',
     preco: 150.00,
     precoPromocional: 120.00,
     categoria: 'Madeira',
     quantidade: 5,
     destaque: false,
+    ativo: true,
+    material: 'Madeira de reflorestamento',
+    dimensoes: 'P: 20x15cm, M: 30x20cm, G: 40x25cm',
+    peso: 1200,
+    artesao: 'Carlos Oliveira',
     imagens: [
       'https://images.unsplash.com/photo-1605971435268-d9d1f47d45e6?w=800&h=600&fit=crop',
       'https://images.unsplash.com/photo-1613248474368-1f2578e899db?w=800&h=600&fit=crop'
     ],
-    dataCriacao: new Date().toISOString()
+    dataCriacao: new Date().toISOString(),
+    avaliacao: 4.2,
+    totalAvaliacoes: 15,
+    tags: ['madeira', 'tábua', 'cozinha', 'sustentável']
+  },
+  {
+    _id: '4',
+    nome: 'Cesto de Fibra Natural',
+    descricao: 'Cesto organizador feito com fibras naturais trançadas à mão. Perfeito para organização doméstica com toque rústico.',
+    preco: 65.00,
+    categoria: 'Trançados',
+    quantidade: 12,
+    destaque: true,
+    ativo: true,
+    material: 'Fibra natural',
+    dimensoes: '35cm x 25cm x 20cm',
+    peso: 300,
+    artesao: 'Ana Costa',
+    imagens: [
+      'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&h=600&fit=crop'
+    ],
+    dataCriacao: new Date().toISOString(),
+    avaliacao: 4.6,
+    totalAvaliacoes: 9,
+    tags: ['cesto', 'fibra', 'organização', 'trançado']
+  },
+  {
+    _id: '5',
+    nome: 'Luminária de Bambu',
+    descricao: 'Luminária artesanal confeccionada em bambu natural. Cria uma atmosfera aconchegante e sustentável em qualquer ambiente.',
+    preco: 180.00,
+    categoria: 'Decoração',
+    quantidade: 6,
+    destaque: false,
+    ativo: true,
+    material: 'Bambu natural',
+    dimensoes: '40cm x 30cm',
+    peso: 500,
+    artesao: 'Pedro Mendes',
+    imagens: [
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=600&fit=crop'
+    ],
+    dataCriacao: new Date().toISOString(),
+    avaliacao: 4.9,
+    totalAvaliacoes: 6,
+    tags: ['luminária', 'bambu', 'decoração', 'sustentável']
   }
 ];
 

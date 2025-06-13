@@ -29,7 +29,6 @@ export default function GerenciamentoPedidos() {
   const [ordenacao, setOrdenacao] = useState<string>('recentes');
   const [busca, setBusca] = useState<string>('');
 
-  useEffect(() => {
     const buscarPedidos = async () => {
       try {
         setCarregando(true);
@@ -50,6 +49,7 @@ export default function GerenciamentoPedidos() {
       }
     };
     
+  useEffect(() => {
     buscarPedidos();
   }, []);
 

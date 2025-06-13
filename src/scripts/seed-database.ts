@@ -104,7 +104,7 @@ const produtosExemplo = [
     nome: 'Escultura em Madeira',
     descricao: 'Escultura feita à mão em madeira de lei reciclada, representando a fauna brasileira. Cada peça é esculpida com ferramentas tradicionais e finalizada com óleos naturais que realçam a beleza dos veios da madeira.',
     preco: 159.90,
-    precoPromocional: 129.90,
+          precoOriginal: 149.90,
     categoria: 'Decoração',
     subcategoria: 'Esculturas',
     quantidade: 4,
@@ -321,8 +321,8 @@ async function seedDatabase() {
           produto: produtosInseridos[4]._id,
           nomeProduto: produtosInseridos[4].nome,
           quantidade: 1,
-          precoUnitario: produtosInseridos[4].precoPromocional || produtosInseridos[4].preco,
-          subtotal: produtosInseridos[4].precoPromocional || produtosInseridos[4].preco
+          precoUnitario: produtosInseridos[4].preco,
+          subtotal: produtosInseridos[4].preco
         },
         {
           produto: produtosInseridos[3]._id,
@@ -342,13 +342,13 @@ async function seedDatabase() {
         estado: usuario1.endereco.estado
       },
       valorFrete: 15.90,
-      valorTotal: (produtosInseridos[4].precoPromocional || produtosInseridos[4].preco) + produtosInseridos[3].preco + 15.90,
-      valorProdutos: (produtosInseridos[4].precoPromocional || produtosInseridos[4].preco) + produtosInseridos[3].preco,
+              valorTotal: produtosInseridos[4].preco + produtosInseridos[3].preco + 15.90,
+        valorProdutos: produtosInseridos[4].preco + produtosInseridos[3].preco,
       status: 'entregue',
       pagamento: {
         metodo: 'cartao',
         status: 'aprovado',
-        valor: (produtosInseridos[4].precoPromocional || produtosInseridos[4].preco) + produtosInseridos[3].preco + 15.90,
+                  valor: produtosInseridos[4].preco + produtosInseridos[3].preco + 15.90,
         dataPagamento: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 dias atrás
       },
       rastreamento: 'BR123456789',

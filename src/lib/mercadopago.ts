@@ -1,10 +1,13 @@
 // Configuração do Mercado Pago
 import { MercadoPagoConfig } from 'mercadopago';
 
-// Credenciais do Mercado Pago
-export const MP_PUBLIC_KEY = 'APP_USR-d63d2f17-18da-4e3b-85c6-55392d893451';
-export const MP_ACCESS_TOKEN = 'APP_USR-2606550240254853-060515-77fe5d77cd094c93bea8420a95bc89bb-2477836761';
-export const MP_WEBHOOK_SECRET = '82a53c052b6098f14a192d19a030b672dc4617ac152156b57b3e6b14fecec6bc';
+// Credenciais do Mercado Pago (usar variáveis de ambiente em produção)
+export const MP_PUBLIC_KEY = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || 'APP_USR-d63d2f17-18da-4e3b-85c6-55392d893451';
+export const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || 'APP_USR-2606550240254853-060515-77fe5d77cd094c93bea8420a95bc89bb-2477836761';
+export const MP_WEBHOOK_SECRET = process.env.MP_WEBHOOK_SECRET || '82a53c052b6098f14a192d19a030b672dc4617ac152156b57b3e6b14fecec6bc';
+
+// URL base para callbacks
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
 // Cliente do Mercado Pago
 export const client = new MercadoPagoConfig({
@@ -17,13 +20,13 @@ export const client = new MercadoPagoConfig({
 
 // Configurações de pagamento
 export const PAYMENT_CONFIG = {
-  // URLs de retorno (ajuste conforme necessário)
-  success_url: process.env.NEXT_PUBLIC_BASE_URL + '/pagamento/sucesso',
-  failure_url: process.env.NEXT_PUBLIC_BASE_URL + '/pagamento/falha',
-  pending_url: process.env.NEXT_PUBLIC_BASE_URL + '/pagamento/pendente',
+  // URLs de retorno
+  success_url: `${BASE_URL}/pagamento/sucesso`,
+  failure_url: `${BASE_URL}/pagamento/falha`,
+  pending_url: `${BASE_URL}/pagamento/pendente`,
   
   // URL do webhook para notificações
-  notification_url: process.env.NEXT_PUBLIC_BASE_URL + '/api/webhooks/mercadopago',
+  notification_url: `${BASE_URL}/api/webhooks/mercadopago`,
   
   // Configurações padrão
   currency_id: 'BRL',

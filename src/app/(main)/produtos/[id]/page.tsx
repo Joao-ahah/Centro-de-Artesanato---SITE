@@ -53,27 +53,40 @@ export default function DetalhesProduto() {
     const fetchProduto = async () => {
       setLoading(true);
       try {
+        console.log('Buscando produto com ID:', params.id);
         const response = await axios.get(`/api/produtos/${params.id}`);
+        console.log('Resposta da API:', response.data);
+        
         if (response.data.success) {
           setProduto(response.data.produto);
           
           // Buscar produtos relacionados
-          const responseRelacionados = await axios.get(`/api/produtos?categoria=${response.data.produto.categoria}&limit=4`);
-          if (responseRelacionados.data.success) {
-            // Filtrar o produto atual dos relacionados
-            const relacionadosFiltrados = responseRelacionados.data.produtos.filter(
-              (p: Produto) => p._id !== response.data.produto._id
-            ).slice(0, 4);
-            setProdutosRelacionados(relacionadosFiltrados);
+          try {
+            const responseRelacionados = await axios.get(`/api/produtos?categoria=${response.data.produto.categoria}&limite=4`);
+            if (responseRelacionados.data.success) {
+              // Filtrar o produto atual dos relacionados
+              const relacionadosFiltrados = responseRelacionados.data.produtos.filter(
+                (p: Produto) => p._id !== response.data.produto._id
+              ).slice(0, 4);
+              setProdutosRelacionados(relacionadosFiltrados);
+            }
+          } catch (relacionadosError) {
+            console.warn('Erro ao buscar produtos relacionados:', relacionadosError);
+            // Não bloquear a página se produtos relacionados falharem
           }
         } else {
-          toast.error('Erro ao carregar produto.');
-          router.push('/produtos');
+          console.error('API retornou erro:', response.data.message);
+          toast.error(response.data.message || 'Erro ao carregar produto.');
+          setTimeout(() => router.push('/produtos'), 2000);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erro ao buscar produto:', error);
-        toast.error('Não foi possível carregar o produto.');
-        router.push('/produtos');
+        console.error('Status:', error.response?.status);
+        console.error('Data:', error.response?.data);
+        
+        const mensagemErro = error.response?.data?.message || 'Não foi possível carregar o produto.';
+        toast.error(mensagemErro);
+        setTimeout(() => router.push('/produtos'), 2000);
       } finally {
         setLoading(false);
       }
@@ -362,10 +375,11 @@ export default function DetalhesProduto() {
       {/* Modal de Avaliação */}
       {showAvaliacaoModal && produto && (
         <AvaliacaoModal
+          isOpen={showAvaliacaoModal}
           produtoId={produto._id}
           produtoNome={produto.nome}
           onClose={() => setShowAvaliacaoModal(false)}
-          onAvaliacaoEnviada={recarregarProduto}
+          onAvaliacaoSalva={recarregarProduto}
         />
       )}
 

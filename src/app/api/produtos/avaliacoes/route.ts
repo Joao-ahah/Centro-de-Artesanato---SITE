@@ -1,150 +1,194 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
-import ProdutoModel from '@/models/produto';
-import { getServerSession } from 'next-auth';
+import { ProdutoModel } from '@/models/produto';
+import { produtosSimulados } from '../route';
 
-// Rota para enviar uma avaliação de produto
+// POST /api/produtos/avaliacoes - Adicionar nova avaliação
 export async function POST(req: NextRequest) {
   try {
-    // Verificar autenticação
-    // TODO: Implementar verificação de sessão
-    
-    // Obter dados da requisição
-    const body = await req.json();
-    const { produtoId, avaliacao, comentario } = body;
-    
-    // Validar dados necessários
+    const { produtoId, avaliacao, comentario, nomeUsuario } = await req.json();
+
+    // Validações básicas
     if (!produtoId || !avaliacao) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'ID do produto e avaliação são obrigatórios' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: 'ID do produto e avaliação são obrigatórios' },
+        { status: 400 }
+      );
     }
-    
-    // Validar que a avaliação está entre 1 e 5
+
     if (avaliacao < 1 || avaliacao > 5) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'A avaliação deve ser um número entre 1 e 5' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: 'Avaliação deve estar entre 1 e 5' },
+        { status: 400 }
+      );
     }
-    
+
+    // Tentar conectar ao banco de dados primeiro
     try {
-      // Conectar ao banco de dados
       await dbConnect();
       
-      // Buscar produto
-      const produto = await ProdutoModel.findById(produtoId);
+      // Buscar produto no banco
+      const produto = await ProdutoModel.findById(produtoId).exec();
       
       if (!produto) {
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Produto não encontrado' 
-        }, { status: 404 });
+        return NextResponse.json(
+          { success: false, message: 'Produto não encontrado' },
+          { status: 404 }
+        );
       }
-      
-      // Adicionar avaliação ao produto
+
+      // Adicionar nova avaliação
       const novaAvaliacao = {
-        usuario: 'usuario-temporario', // Temporário, substituir por ID real
-        nome: 'Cliente', // Temporário, substituir por nome real
+        usuario: 'usuário-anonimo', // TODO: Integrar com autenticação
+        nome: nomeUsuario || 'Usuário Anônimo',
         nota: avaliacao,
         comentario: comentario || '',
         data: new Date()
       };
+
+      // Atualizar produto com nova avaliação
+      produto.avaliacoes = produto.avaliacoes || [];
+      produto.avaliacoes.push(novaAvaliacao);
       
-      // Verificar se o produto já tem avaliações
+      // Recalcular média de avaliações
+      const totalAvaliacoes = produto.avaliacoes.length;
+      const somaAvaliacoes = produto.avaliacoes.reduce((soma, av) => soma + av.nota, 0);
+      produto.avaliacao = somaAvaliacoes / totalAvaliacoes;
+      produto.totalAvaliacoes = totalAvaliacoes;
+
+      await produto.save();
+
+      return NextResponse.json({
+        success: true,
+        message: 'Avaliação adicionada com sucesso',
+        produto: {
+          _id: produto._id,
+          avaliacao: produto.avaliacao,
+          totalAvaliacoes: produto.totalAvaliacoes,
+          avaliacoes: produto.avaliacoes
+        }
+      });
+      
+    } catch (dbError) {
+      console.warn('Falha ao conectar ao banco de dados. Usando dados simulados.');
+      console.error(dbError);
+      
+      // Fallback para produtos simulados
+      const produtoIndex = produtosSimulados.findIndex((p: any) => p._id === produtoId);
+      
+      if (produtoIndex === -1) {
+        return NextResponse.json(
+          { success: false, message: 'Produto não encontrado' },
+          { status: 404 }
+        );
+      }
+
+      const produto = produtosSimulados[produtoIndex];
+      
+      // Adicionar nova avaliação aos dados simulados
+      const novaAvaliacao = {
+        usuario: 'usuário-anonimo',
+        nome: nomeUsuario || 'Usuário Anônimo',
+        nota: avaliacao,
+        comentario: comentario || '',
+        data: new Date()
+      };
+
+      // Inicializar avaliacoes se não existir
       if (!produto.avaliacoes) {
         produto.avaliacoes = [];
       }
       
-      // Adicionar avaliação
       produto.avaliacoes.push(novaAvaliacao);
       
-      // Calcular nova média de avaliações
-      const notas = produto.avaliacoes.map(a => a.nota);
-      const media = notas.reduce((a, b) => a + b, 0) / notas.length;
-      
-      // Atualizar estatísticas do produto
-      produto.avaliacao = parseFloat(media.toFixed(1)); // Arredondar para 1 casa decimal
-      produto.totalAvaliacoes = produto.avaliacoes.length;
-      
-      // Salvar produto atualizado
-      await produto.save();
-      
+      // Recalcular média
+      const totalAvaliacoes = produto.avaliacoes.length;
+      const somaAvaliacoes = produto.avaliacoes.reduce((soma: number, av: any) => soma + av.nota, 0);
+      produto.avaliacao = somaAvaliacoes / totalAvaliacoes;
+      produto.totalAvaliacoes = totalAvaliacoes;
+
       return NextResponse.json({
         success: true,
-        message: 'Avaliação enviada com sucesso',
-        avaliacao: novaAvaliacao
+        message: 'Avaliação adicionada com sucesso',
+        produto: {
+          _id: produto._id,
+          avaliacao: produto.avaliacao,
+          totalAvaliacoes: produto.totalAvaliacoes,
+          avaliacoes: produto.avaliacoes
+        }
       });
-    } catch (dbError: any) {
-      console.error('Erro ao salvar avaliação no banco de dados:', dbError);
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Erro ao processar avaliação',
-        error: dbError.message
-      }, { status: 500 });
     }
+
   } catch (error: any) {
-    console.error('Erro ao processar avaliação:', error);
-    return NextResponse.json({
-      success: false,
-      message: 'Erro ao processar avaliação',
-      error: error.message
-    }, { status: 500 });
+    console.error('Erro ao adicionar avaliação:', error);
+    return NextResponse.json(
+      { success: false, message: 'Erro ao adicionar avaliação', error: error.message },
+      { status: 500 }
+    );
   }
 }
 
-// Rota para buscar avaliações de um produto
+// GET /api/produtos/avaliacoes - Buscar avaliações de um produto
 export async function GET(req: NextRequest) {
   try {
-    // Obter ID do produto da URL
     const { searchParams } = new URL(req.url);
     const produtoId = searchParams.get('produtoId');
-    
+
     if (!produtoId) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'ID do produto é obrigatório' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: 'ID do produto é obrigatório' },
+        { status: 400 }
+      );
     }
-    
+
+    // Tentar conectar ao banco de dados primeiro
     try {
-      // Conectar ao banco de dados
       await dbConnect();
       
-      // Buscar produto
-      const produto = await ProdutoModel.findById(produtoId);
+      // Buscar produto no banco
+      const produto = await ProdutoModel.findById(produtoId).select('avaliacoes avaliacao totalAvaliacoes').exec();
       
       if (!produto) {
-        return NextResponse.json({ 
-          success: false, 
-          message: 'Produto não encontrado' 
-        }, { status: 404 });
+        return NextResponse.json(
+          { success: false, message: 'Produto não encontrado' },
+          { status: 404 }
+        );
       }
-      
-      // Retornar avaliações
+
       return NextResponse.json({
         success: true,
         avaliacoes: produto.avaliacoes || [],
-        estatisticas: {
-          media: produto.avaliacao || 0,
-          total: produto.totalAvaliacoes || 0
-        }
+        avaliacao: produto.avaliacao || 0,
+        totalAvaliacoes: produto.totalAvaliacoes || 0
       });
-    } catch (dbError: any) {
-      console.error('Erro ao buscar avaliações:', dbError);
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Erro ao buscar avaliações',
-        error: dbError.message
-      }, { status: 500 });
+      
+    } catch (dbError) {
+      console.warn('Falha ao conectar ao banco de dados. Usando dados simulados.');
+      console.error(dbError);
+      
+      // Fallback para produtos simulados
+      const produto = produtosSimulados.find((p: any) => p._id === produtoId);
+      
+      if (!produto) {
+        return NextResponse.json(
+          { success: false, message: 'Produto não encontrado' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        avaliacoes: produto.avaliacoes || [],
+        avaliacao: produto.avaliacao || 0,
+        totalAvaliacoes: produto.totalAvaliacoes || 0
+      });
     }
+
   } catch (error: any) {
-    console.error('Erro ao processar requisição GET para avaliações:', error);
-    return NextResponse.json({
-      success: false,
-      message: 'Erro ao buscar avaliações',
-      error: error.message
-    }, { status: 500 });
+    console.error('Erro ao buscar avaliações:', error);
+    return NextResponse.json(
+      { success: false, message: 'Erro ao buscar avaliações', error: error.message },
+      { status: 500 }
+    );
   }
 } 

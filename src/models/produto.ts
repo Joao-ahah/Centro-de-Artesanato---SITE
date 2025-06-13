@@ -148,6 +148,19 @@ ProdutoSchema.index({ quantidade: 1 });
 ProdutoSchema.index({ ativo: 1 });
 ProdutoSchema.index({ dataCriacao: -1 });
 
+// Middleware para atualizar dataAtualizacao automaticamente
+ProdutoSchema.pre('save', function(next) {
+  if (this.isModified() && !this.isNew) {
+    this.dataAtualizacao = new Date();
+  }
+  next();
+});
+
+ProdutoSchema.pre(['updateOne', 'findOneAndUpdate'], function(next) {
+  this.set({ dataAtualizacao: new Date() });
+  next();
+});
+
 // Exportar modelo verificando se já existe para evitar erros em desenvolvimento
 export const ProdutoModel = (mongoose.models.Produto as IProdutoModel) || 
   mongoose.model<IProduto, IProdutoModel>('Produto', ProdutoSchema);

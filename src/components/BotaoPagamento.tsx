@@ -37,33 +37,60 @@ export default function BotaoPagamento({
     clearError();
 
     try {
-      console.log('BotaoPagamento: Iniciando processo de pagamento');
+      console.log('🚀 BotaoPagamento: Iniciando processo de pagamento');
+      console.log('📦 Items:', items);
+      console.log('👤 Payer:', payer);
+      console.log('🔗 External Reference:', external_reference);
       
-      // Criar preferência
-      const preferenceData = await criarPreferencia(items, payer, external_reference);
-      
-      console.log('BotaoPagamento: Preferência criada:', preferenceData);
-
-      // Redirecionar para o checkout do Mercado Pago
-      const checkoutUrl = preferenceData.init_point || preferenceData.sandbox_init_point;
-      
-      if (checkoutUrl) {
-        console.log('BotaoPagamento: Redirecionando para checkout:', checkoutUrl);
-        
-        // Chamar callback de sucesso se fornecido
-        if (onSuccess) {
-          onSuccess(preferenceData);
-        }
-        
-        // Redirecionar para o checkout
-        window.location.href = checkoutUrl;
-      } else {
-        throw new Error('URL de checkout não recebida');
+      // Validações básicas
+      if (!items || items.length === 0) {
+        throw new Error('Nenhum item para pagamento encontrado');
       }
 
+      if (total <= 0) {
+        throw new Error('Valor total deve ser maior que zero');
+      }
+      
+      // Criar preferência
+      console.log('⚡ Chamando API para criar preferência...');
+      const preferenceData = await criarPreferencia(items, payer, external_reference);
+      
+      console.log('✅ Preferência criada:', preferenceData);
+
+      // Verificar se recebemos uma URL válida
+      const checkoutUrl = preferenceData.init_point || preferenceData.sandbox_init_point;
+      
+      if (!checkoutUrl) {
+        console.error('❌ URL de checkout não recebida:', preferenceData);
+        throw new Error('URL de checkout não foi gerada. Verifique as configurações do Mercado Pago.');
+      }
+
+      console.log('🔗 URL de checkout:', checkoutUrl);
+      
+      // Chamar callback de sucesso se fornecido
+      if (onSuccess) {
+        console.log('📞 Chamando callback de sucesso');
+        onSuccess(preferenceData);
+      }
+      
+      // Pequeno delay para garantir que o callback execute
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Redirecionar para o checkout
+      console.log('🌐 Redirecionando para Mercado Pago...');
+      window.location.href = checkoutUrl;
+
     } catch (err: any) {
-      console.error('BotaoPagamento: Erro:', err);
-      const errorMessage = err.message || 'Erro ao processar pagamento';
+      console.error('💥 BotaoPagamento: Erro detalhado:', {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        fullError: err
+      });
+      
+      const errorMessage = err.message || 'Erro desconhecido ao processar pagamento';
+      
+      console.error('📨 Reportando erro:', errorMessage);
       
       if (onError) {
         onError(errorMessage);
@@ -111,13 +138,17 @@ export default function BotaoPagamento({
       {/* Erro */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="text-red-600 text-sm">
-              <strong>Erro:</strong> {error}
+          <div className="flex items-start">
+            <div className="text-red-600 text-sm flex-1">
+              <strong>Erro no pagamento:</strong> 
+              <div className="mt-1">{error}</div>
+              <div className="mt-2 text-xs text-red-500">
+                Verifique se todas as configurações estão corretas e tente novamente.
+              </div>
             </div>
             <button 
               onClick={clearError}
-              className="ml-auto text-red-600 hover:text-red-800"
+              className="ml-2 text-red-600 hover:text-red-800 font-bold"
             >
               ✕
             </button>
@@ -128,13 +159,13 @@ export default function BotaoPagamento({
       {/* Botão de pagamento */}
       <button
         onClick={handlePagamento}
-        disabled={disabled || isLoading || items.length === 0}
+        disabled={disabled || isLoading || items.length === 0 || total <= 0}
         className={`
           w-full flex items-center justify-center gap-3 px-6 py-4 rounded-lg font-semibold text-white
           transition-all duration-200 transform
           ${isLoading 
             ? 'bg-gray-400 cursor-not-allowed' 
-            : disabled 
+            : disabled || total <= 0
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-green-600 hover:bg-green-700 hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl'
           }
@@ -162,6 +193,19 @@ export default function BotaoPagamento({
         <p>Aceitamos cartão de crédito, débito, PIX e boleto</p>
       </div>
 
+      {/* Status de validação */}
+      {items.length === 0 && (
+        <div className="text-center text-sm text-red-600 bg-red-50 p-2 rounded">
+          ⚠️ Nenhum item encontrado para pagamento
+        </div>
+      )}
+
+      {total <= 0 && items.length > 0 && (
+        <div className="text-center text-sm text-red-600 bg-red-50 p-2 rounded">
+          ⚠️ Valor total inválido: {formatCurrency(total)}
+        </div>
+      )}
+
       {/* Debug em desenvolvimento */}
       {process.env.NODE_ENV === 'development' && (
         <details className="text-xs">
@@ -171,10 +215,13 @@ export default function BotaoPagamento({
           <div className="mt-2 bg-gray-100 p-3 rounded text-xs">
             <p><strong>Items:</strong> {items.length}</p>
             <p><strong>Total:</strong> {formatCurrency(total)}</p>
+            <p><strong>Total válido:</strong> {total > 0 ? '✅' : '❌'}</p>
             <p><strong>External Reference:</strong> {external_reference || 'N/A'}</p>
             <p><strong>Payer:</strong> {payer?.email || 'N/A'}</p>
-            <pre className="mt-2 text-xs">
-              {JSON.stringify({ items, payer }, null, 2)}
+            <p><strong>Estado:</strong> {isLoading ? 'Carregando' : 'Pronto'}</p>
+            <p><strong>Erro:</strong> {error || 'Nenhum'}</p>
+            <pre className="mt-2 text-xs bg-white p-2 rounded overflow-auto max-h-32">
+              {JSON.stringify({ items, payer, total, disabled, isLoading }, null, 2)}
             </pre>
           </div>
         </details>

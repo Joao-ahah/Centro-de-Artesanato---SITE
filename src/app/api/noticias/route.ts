@@ -3,7 +3,7 @@ import dbConnect from '@/lib/db';
 import { NoticiaModel } from '@/models/noticia';
 
 // Notícias simuladas para desenvolvimento (quando sem banco de dados)
-export const noticiasSimuladas = [
+const noticiasSimuladas = [
   {
     _id: '1',
     titulo: 'Feira de Artesanato de Primavera: Conheça os Destaques',
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
       
       // Buscar notícia específica por ID
       if (id) {
-        const noticia = await NoticiaModel.findById(id);
+        const noticia = await (NoticiaModel as any).findById(id);
         
         if (!noticia) {
           return NextResponse.json({
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
       
       // Buscar notícia específica por slug
       if (slug) {
-        const noticia = await NoticiaModel.findOne({ slug });
+        const noticia = await (NoticiaModel as any).findOne({ slug });
         
         if (!noticia) {
           return NextResponse.json({
@@ -84,7 +84,11 @@ export async function GET(req: NextRequest) {
         }
         
         // Incrementar visualizações
-        await noticia.incrementarVisualizacoes();
+        try {
+          await (noticia as any).incrementarVisualizacoes();
+        } catch (e) {
+          console.log('Erro ao incrementar visualizações:', e);
+        }
         
         return NextResponse.json({
           success: true,
@@ -120,13 +124,13 @@ export async function GET(req: NextRequest) {
       const skip = (pagina - 1) * limite;
       
       // Executar consulta
-      const noticias = await NoticiaModel.find(query)
+      const noticias = await (NoticiaModel as any).find(query)
         .sort({ dataPublicacao: -1 })
         .skip(skip)
         .limit(limite);
       
       // Contar total para paginação
-      const total = await NoticiaModel.countDocuments(query);
+      const total = await (NoticiaModel as any).countDocuments(query);
       
       return NextResponse.json({
         success: true,
@@ -200,30 +204,27 @@ export async function GET(req: NextRequest) {
         );
       }
       
-      // Aplicar paginação
-      const total = noticiasFiltradas.length;
-      const inicio = (pagina - 1) * limite;
-      const fim = inicio + limite;
-      const noticiasPaginadas = noticiasFiltradas.slice(inicio, fim);
+      // Paginação dos dados simulados
+      const skip = (pagina - 1) * limite;
+      const paginatedNoticias = noticiasFiltradas.slice(skip, skip + limite);
       
       return NextResponse.json({
         success: true,
-        noticias: noticiasPaginadas,
+        noticias: paginatedNoticias,
         paginacao: {
-          total,
+          total: noticiasFiltradas.length,
           pagina,
           limite,
-          paginas: Math.ceil(total / limite)
+          paginas: Math.ceil(noticiasFiltradas.length / limite)
         }
       });
     }
     
   } catch (error: any) {
-    console.error('Erro ao processar requisição GET para notícias:', error);
+    console.error('Erro na API de notícias (GET):', error);
     return NextResponse.json({
       success: false,
-      message: 'Erro ao buscar notícias',
-      error: error.message
+      message: 'Erro interno do servidor'
     }, { status: 500 });
   }
 }
@@ -231,60 +232,33 @@ export async function GET(req: NextRequest) {
 // POST - Criar nova notícia
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    await dbConnect();
     
-    // Validar dados básicos
-    if (!body.titulo || !body.resumo || !body.conteudo || !body.autor) {
-      return NextResponse.json({
-        success: false,
-        message: 'Dados incompletos. Título, resumo, conteúdo e autor são obrigatórios.'
-      }, { status: 400 });
-    }
+    const data = await req.json();
     
-    try {
-      await dbConnect();
-      
-      // Verificar se já existe uma notícia com o mesmo slug
-      if (body.slug) {
-        const noticiaExistente = await NoticiaModel.findOne({ slug: body.slug });
-        if (noticiaExistente) {
-          return NextResponse.json({
-            success: false,
-            message: 'Já existe uma notícia com este slug'
-          }, { status: 409 });
-        }
-      }
-      
-      // Criar nova notícia
-      const novaNoticia = await NoticiaModel.create(body);
+    const novaNoticia = new (NoticiaModel as any)(data);
+    await novaNoticia.save();
       
       return NextResponse.json({
         success: true,
-        message: 'Notícia criada com sucesso',
-        noticia: novaNoticia
+      noticia: novaNoticia,
+      message: 'Notícia criada com sucesso!'
       }, { status: 201 });
-      
-    } catch (dbError) {
-      console.error('Erro ao conectar ao banco de dados:', dbError);
-      return NextResponse.json({
-        success: false,
-        message: 'Erro ao conectar ao banco de dados'
-      }, { status: 500 });
-    }
     
   } catch (error: any) {
     console.error('Erro ao criar notícia:', error);
     return NextResponse.json({
       success: false,
-      message: 'Erro ao criar notícia',
-      error: error.message
-    }, { status: 500 });
+      message: error.message || 'Erro ao criar notícia'
+    }, { status: 400 });
   }
 }
 
 // PUT - Atualizar notícia existente
 export async function PUT(req: NextRequest) {
   try {
+    await dbConnect();
+    
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     
@@ -295,68 +269,41 @@ export async function PUT(req: NextRequest) {
       }, { status: 400 });
     }
     
-    const body = await req.json();
+    const data = await req.json();
     
-    try {
-      await dbConnect();
-      
-      // Verificar se a notícia existe
-      const noticiaExistente = await NoticiaModel.findById(id);
-      if (!noticiaExistente) {
+    const noticiaAtualizada = await (NoticiaModel as any).findByIdAndUpdate(
+      id,
+      data,
+      { new: true, runValidators: true }
+    );
+    
+    if (!noticiaAtualizada) {
         return NextResponse.json({
           success: false,
           message: 'Notícia não encontrada'
         }, { status: 404 });
       }
       
-      // Verificar slug único (se estiver sendo alterado)
-      if (body.slug && body.slug !== noticiaExistente.slug) {
-        const slugExistente = await NoticiaModel.findOne({ 
-          slug: body.slug, 
-          _id: { $ne: id } 
-        });
-        if (slugExistente) {
-          return NextResponse.json({
-            success: false,
-            message: 'Já existe uma notícia com este slug'
-          }, { status: 409 });
-        }
-      }
-      
-      // Atualizar notícia
-      const noticiaAtualizada = await NoticiaModel.findByIdAndUpdate(
-        id,
-        body,
-        { new: true, runValidators: true }
-      );
-      
       return NextResponse.json({
         success: true,
-        message: 'Notícia atualizada com sucesso',
-        noticia: noticiaAtualizada
+      noticia: noticiaAtualizada,
+      message: 'Notícia atualizada com sucesso!'
       });
-      
-    } catch (dbError) {
-      console.error('Erro ao conectar ao banco de dados:', dbError);
-      return NextResponse.json({
-        success: false,
-        message: 'Erro ao conectar ao banco de dados'
-      }, { status: 500 });
-    }
     
   } catch (error: any) {
     console.error('Erro ao atualizar notícia:', error);
     return NextResponse.json({
       success: false,
-      message: 'Erro ao atualizar notícia',
-      error: error.message
-    }, { status: 500 });
+      message: error.message || 'Erro ao atualizar notícia'
+    }, { status: 400 });
   }
 }
 
-// DELETE - Excluir notícia
+// DELETE - Deletar notícia
 export async function DELETE(req: NextRequest) {
   try {
+    await dbConnect();
+    
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     
@@ -367,40 +314,25 @@ export async function DELETE(req: NextRequest) {
       }, { status: 400 });
     }
     
-    try {
-      await dbConnect();
+    const noticiaRemovida = await (NoticiaModel as any).findByIdAndDelete(id);
       
-      // Verificar se a notícia existe
-      const noticia = await NoticiaModel.findById(id);
-      if (!noticia) {
+    if (!noticiaRemovida) {
         return NextResponse.json({
           success: false,
           message: 'Notícia não encontrada'
         }, { status: 404 });
       }
       
-      // Excluir notícia
-      await NoticiaModel.findByIdAndDelete(id);
-      
       return NextResponse.json({
         success: true,
-        message: 'Notícia excluída com sucesso'
+      message: 'Notícia removida com sucesso!'
       });
-      
-    } catch (dbError) {
-      console.error('Erro ao conectar ao banco de dados:', dbError);
-      return NextResponse.json({
-        success: false,
-        message: 'Erro ao conectar ao banco de dados'
-      }, { status: 500 });
-    }
     
   } catch (error: any) {
-    console.error('Erro ao excluir notícia:', error);
+    console.error('Erro ao deletar notícia:', error);
     return NextResponse.json({
       success: false,
-      message: 'Erro ao excluir notícia',
-      error: error.message
-    }, { status: 500 });
+      message: error.message || 'Erro ao deletar notícia'
+    }, { status: 400 });
   }
 } 

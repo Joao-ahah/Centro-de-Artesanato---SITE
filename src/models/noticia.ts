@@ -91,7 +91,7 @@ NoticiaSchema.index({ titulo: 'text', resumo: 'text', conteudo: 'text' });
 // Middleware para gerar slug automaticamente
 NoticiaSchema.pre('save', function(next) {
   if (this.isModified('titulo') && !this.slug) {
-    this.slug = this.titulo
+    this.slug = (this.titulo as string)
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Remove acentos
@@ -128,12 +128,12 @@ NoticiaSchema.statics.buscarPublicadas = function(filtros = {}) {
 
 // Método estático para buscar por categoria
 NoticiaSchema.statics.buscarPorCategoria = function(categoria: string) {
-  return this.buscarPublicadas({ categorias: categoria });
+  return (this as any).buscarPublicadas({ categorias: categoria });
 };
 
 // Método estático para buscar por tag
 NoticiaSchema.statics.buscarPorTag = function(tag: string) {
-  return this.buscarPublicadas({ tags: tag });
+  return (this as any).buscarPublicadas({ tags: tag });
 };
 
 // Exportar o modelo
